@@ -28,7 +28,7 @@ build
 dist
 .mastra/
 
-# Local data (libsql, workspaces)
+# Local data (libsql db + per-tenant workspaces). Skills live in apps/api/skills/ and ARE committed.
 data/
 
 
