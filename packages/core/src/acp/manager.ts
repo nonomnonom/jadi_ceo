@@ -281,6 +281,11 @@ class AcpSessionManager {
     return this.detachedTasks.get(ownerKey) ?? [];
   }
 
+  /** Count running detached tasks for an owner key (no iteration) */
+  getRunningTaskCount(ownerKey = 'default'): number {
+    return this.detachedTasks.get(ownerKey)?.filter((t) => t.status === 'running').length ?? 0;
+  }
+
   /** Create and track a new detached task run */
   createRunningTaskRun(params: SpawnParams): DetachedTaskRun {
     const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

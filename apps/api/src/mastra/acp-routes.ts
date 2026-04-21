@@ -13,6 +13,21 @@ import { getAcpSessionManager } from '@juragan/core';
 import { DEFAULT_TENANT_ID } from '@juragan/shared';
 
 export function registerAcpRoutes() {
+  // Health check for ACP subsystem
+  registerApiRoute('/acp/health', {
+    method: 'GET',
+    handler: async () => {
+      const manager = getAcpSessionManager();
+      const enabled = process.env.ACP_ENABLED !== 'false';
+      const sessions = await manager.listSessions(DEFAULT_TENANT_ID, 1).catch(() => []);
+      return Response.json({
+        enabled,
+        activeSessions: sessions.length,
+        timestamp: Date.now(),
+      });
+    },
+  });
+
   registerApiRoute('/acp/sessions', {
     method: 'GET',
     handler: async () => {
@@ -46,7 +61,8 @@ export function registerAcpRoutes() {
     handler: async () => {
       const manager = getAcpSessionManager();
       const tasks = manager.getRunningTaskRuns(DEFAULT_TENANT_ID);
-      return Response.json({ tasks });
+      const count = manager.getRunningTaskCount(DEFAULT_TENANT_ID);
+      return Response.json({ tasks, count });
     },
   });
 
