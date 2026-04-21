@@ -295,21 +295,21 @@
 
 ### 5.1 Existing Skills Review
 
-- [ ] 5.1.1 Review `daily-checkin`
-- [ ] 5.1.2 Review `customer-followup`
-- [ ] 5.1.3 Review `price-calculation`
+- [x] 5.1.1 Review `daily-checkin`
+- [x] 5.1.2 Review `customer-followup`
+- [x] 5.1.3 Review `price-calculation`
 
 ### 5.2 New Skills
 
-- [ ] 5.2.1 Create `stock-opname`
-- [ ] 5.2.2 Create `supplier-order`
-- [ ] 5.2.3 Create `wa-blast`
-- [ ] 5.2.4 Create `invoice-reminder`
-- [ ] 5.2.5 Create `expense-claim`
+- [x] 5.2.1 Create `stock-opname`
+- [x] 5.2.2 Create `supplier-order`
+- [x] 5.2.3 Create `wa-blast`
+- [x] 5.2.4 Create `invoice-reminder`
+- [x] 5.2.5 Create `expense-claim`
 
 ### 5.3 Registration and Testing
 
-- [ ] 5.3.1 Register all 8 skills
+- [x] 5.3.1 Register all 8 skills (via skill-commands.ts)
 - [ ] 5.3.2 Test trigger loading
 - [ ] 5.3.3 Test manual execution via `/skill`
 
