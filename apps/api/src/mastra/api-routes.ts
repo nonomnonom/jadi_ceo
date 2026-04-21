@@ -400,4 +400,79 @@ export const apiRoutes = [
       return c.json({ ok: true });
     },
   }),
+  registerApiRoute('/custom/pakasir/webhook', {
+    method: 'POST',
+    openapi: {
+      summary: 'Handle Pakasir payment confirmation webhook',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const body = (await c.req.json().catch(() => null)) as {
+        order_id?: string;
+        status?: string;
+        amount?: number;
+        payment_method?: string;
+        completed_at?: string;
+      } | null;
+      if (!body?.order_id) return c.json({ error: 'order_id required' }, 400);
+
+      const db = getDb();
+      const now = Date.now();
+
+      if (body.status === 'completed') {
+        await db.execute({
+          sql: "UPDATE payments SET status = 'completed', completed_at = ?, updated_at = ? WHERE order_id = ?",
+          args: [now, now, body.order_id],
+        });
+        await db.execute({
+          sql: "UPDATE orders SET payment_status = 'paid' WHERE id = ?",
+          args: [body.order_id],
+        });
+        return c.json({ ok: true, status: 'completed' });
+      }
+
+      if (body.status === 'expired') {
+        await db.execute({
+          sql: "UPDATE payments SET status = 'expired', updated_at = ? WHERE order_id = ? AND status = 'pending'",
+          args: [now, body.order_id],
+        });
+        return c.json({ ok: true, status: 'expired' });
+      }
+
+      return c.json({ ok: true });
+    },
+  }),
+  registerApiRoute('/custom/pakasir/payment/:orderId', {
+    method: 'GET',
+    openapi: {
+      summary: 'Get payment status from local DB for an order',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const orderId = c.req.query('orderId');
+      if (!orderId) return c.json({ error: 'orderId required' }, 400);
+      const db = getDb();
+      const result = await db.execute({
+        sql: `SELECT order_id, amount_idr, total_payment, payment_method, payment_number, status, expired_at, completed_at
+              FROM payments WHERE tenant_id = ? AND order_id = ?`,
+        args: [tenantId, orderId],
+      });
+      if (result.rows.length === 0) return c.json({ found: false }, 200);
+      const r = result.rows[0]!;
+      return c.json({
+        found: true,
+        orderId: String(r.order_id),
+        amountIdr: Number(r.amount_idr),
+        totalPayment: Number(r.total_payment),
+        paymentMethod: String(r.payment_method),
+        status: String(r.status),
+        expiredAt: r.expired_at != null ? Number(r.expired_at) : null,
+        completedAt: r.completed_at != null ? Number(r.completed_at) : null,
+      });
+    },
+  }),
 ];
