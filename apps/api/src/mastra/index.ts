@@ -11,6 +11,9 @@ import { startReminderExecutor } from '../reminders/executor.js';
 import { customerAgent } from './agents/customer/index.js';
 import { ownerSupervisor } from './agents/owner-supervisor.js';
 import { apiRoutes } from './api-routes.js';
+import { orderApprovalWorkflow } from '../workflows/order-approval.js';
+import { restockWorkflow } from '../workflows/restock.js';
+import { customerFollowupWorkflow } from '../workflows/customer-followup.js';
 
 export const mastra = new Mastra({
   storage: new LibSQLStore({
@@ -18,7 +21,11 @@ export const mastra = new Mastra({
     url: DATABASE_URL,
   }),
   agents: { ownerSupervisor, customer: customerAgent },
-  workflows: {},
+  workflows: {
+    orderApproval: orderApprovalWorkflow,
+    restock: restockWorkflow,
+    customerFollowup: customerFollowupWorkflow,
+  },
   bundler: {
     transpilePackages: ['@juragan/shared'],
     externals: ['baileys', '@juragan/queue', 'msgpackr-extract'],
