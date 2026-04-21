@@ -104,12 +104,6 @@ const lookupSuppliersStep = createStep({
     const db = getDb();
     const { tenantId, lowStockProducts } = inputData;
 
-    // Get suppliers
-    const supplierResult = await db.execute({
-      sql: `SELECT id, name, phone FROM contacts WHERE tenant_id = ? AND type = 'supplier' ORDER BY name`,
-      args: [tenantId],
-    });
-
     if (resumeData) {
       // Resume with selected products
       const { action, selectedProductIds } = resumeData;
