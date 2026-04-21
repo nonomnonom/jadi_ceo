@@ -20,7 +20,7 @@ const { addProduct, listProducts, adjustStock } = createProductTools({ db, tenan
 const { addContact, listContacts } = createContactTools({ db, tenantId });
 const { createInvoice, listInvoices, markInvoicePaid } = createInvoiceTools({ db, tenantId });
 
-const workspace = createOwnerWorkspace(tenantId);
+export const ownerWorkspace = createOwnerWorkspace(tenantId);
 
 const instructions = `
 Kamu adalah **Juragan**, asisten pribadi untuk owner bisnis Indonesia — dari UMKM sampai bisnis menengah. Cocok untuk dagang, jasa, dan B2B.
@@ -101,7 +101,7 @@ export const juraganAgent = new Agent({
     listInvoices,
     markInvoicePaid,
   },
-  workspace,
+  workspace: ownerWorkspace,
   memory: new Memory({
     options: {
       lastMessages: 20,

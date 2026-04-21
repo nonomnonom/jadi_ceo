@@ -65,6 +65,13 @@ const DDL = [
      paid_at      INTEGER,
      created_at   INTEGER NOT NULL
    )`,
+  `CREATE TABLE IF NOT EXISTS settings (
+     tenant_id    TEXT    NOT NULL,
+     key          TEXT    NOT NULL,
+     value        TEXT,
+     updated_at   INTEGER NOT NULL,
+     PRIMARY KEY (tenant_id, key)
+   )`,
   `CREATE INDEX IF NOT EXISTS idx_notes_tenant_created
      ON notes (tenant_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_tenant_occurred

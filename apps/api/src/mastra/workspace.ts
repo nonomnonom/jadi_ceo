@@ -11,8 +11,12 @@ const PACKAGE_ROOT = resolve(HERE, '../../');
 const SKILLS_DIR = resolve(PACKAGE_ROOT, 'skills');
 const DATA_ROOT = resolve(PACKAGE_ROOT, 'data');
 
+export function ownerWorkspaceBasePath(tenantId: string): string {
+  return resolve(DATA_ROOT, 'workspaces', tenantId, 'owner');
+}
+
 export function createOwnerWorkspace(tenantId: string): Workspace {
-  const basePath = resolve(DATA_ROOT, 'workspaces', tenantId, 'owner');
+  const basePath = ownerWorkspaceBasePath(tenantId);
   mkdirSync(basePath, { recursive: true });
   return new Workspace({
     filesystem: new LocalFilesystem({
