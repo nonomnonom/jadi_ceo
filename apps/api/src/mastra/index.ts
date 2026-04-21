@@ -11,9 +11,12 @@ import { startReminderExecutor } from '../reminders/executor.js';
 import { customerAgent } from './agents/customer/index.js';
 import { ownerSupervisor } from './agents/owner-supervisor.js';
 import { apiRoutes } from './api-routes.js';
+import { registerAcpRoutes } from './acp-routes.js';
 import { orderApprovalWorkflow } from '../workflows/order-approval.js';
 import { restockWorkflow } from '../workflows/restock.js';
 import { customerFollowupWorkflow } from '../workflows/customer-followup.js';
+
+registerAcpRoutes();
 
 export const mastra = new Mastra({
   storage: new LibSQLStore({
