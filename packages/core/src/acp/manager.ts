@@ -276,6 +276,12 @@ class AcpSessionManager {
     return this.runtimeCache.get(sessionKey)?.handle;
   }
 
+  /** List running detached tasks for an owner key */
+  getRunningTaskRuns(ownerKey = 'default'): DetachedTaskRun[] {
+    return this.detachedTasks.get(ownerKey) ?? [];
+  }
+
+  /** Create and track a new detached task run */
   createRunningTaskRun(params: SpawnParams): DetachedTaskRun {
     const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const task: DetachedTaskRun = {
@@ -286,8 +292,7 @@ class AcpSessionManager {
       createdAt: Date.now(),
       status: 'running',
     };
-
-    const ownerKey = 'default'; // tenant-scoped later
+    const ownerKey = 'default';
     if (!this.detachedTasks.has(ownerKey)) {
       this.detachedTasks.set(ownerKey, []);
     }
@@ -295,10 +300,7 @@ class AcpSessionManager {
     return task;
   }
 
-  getRunningTaskRuns(ownerKey = 'default'): DetachedTaskRun[] {
-    return this.detachedTasks.get(ownerKey) ?? [];
-  }
-
+  /** Mark a detached task as done with an optional result */
   completeTaskRun(id: string, result?: unknown): void {
     for (const tasks of this.detachedTasks.values()) {
       const task = tasks.find((t) => t.id === id);
@@ -310,6 +312,7 @@ class AcpSessionManager {
     }
   }
 
+  /** Mark a detached task as failed with an optional error */
   failTaskRun(id: string, error?: unknown): void {
     for (const tasks of this.detachedTasks.values()) {
       const task = tasks.find((t) => t.id === id);
@@ -319,6 +322,13 @@ class AcpSessionManager {
         break;
       }
     }
+  }
+
+  /** List ACP sessions from DB (requires setDb to be called first) */
+  async listSessions(tenantId: string, limit = 50): Promise<unknown[]> {
+    if (!this.db) return [];
+    const { listAcpSessionsByTenant } = await import('./session-persistence.js');
+    return listAcpSessionsByTenant(this.db, tenantId, { limit });
   }
 
   /** Reset for testing — not for production use */
