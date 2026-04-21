@@ -12,7 +12,7 @@
  */
 
 import { z } from 'zod';
-import { upsertAcpSession } from './session-persistence.js';
+import { upsertAcpSession, appendTranscript } from './session-persistence.js';
 
 // Re-export shared types from plugin-sdk for convenience
 export type { ToolDefinition, ToolContext } from '@juragan/plugin-sdk';
@@ -236,6 +236,23 @@ class AcpSessionManager {
     // Note: actual agent execution would be wired here via the Mastra agent.
     // This generator pattern supports stream relay from sub-agents.
     async function* generate(): AsyncGenerator<AgentOutput> {
+      yield { type: 'done', text: '' };
+    }
+    return generate();
+  }
+
+  async runTurnWithTranscript(
+    handle: SessionHandle,
+    input: AgentInput,
+  ): Promise<AsyncGenerator<AgentOutput>> {
+    const db = this.db;
+    async function* generate(): AsyncGenerator<AgentOutput> {
+      // Yield a placeholder delta — real implementation would call the Mastra agent here
+      if (input.text) {
+        if (db) await appendTranscript(db, { sessionKey: handle.sessionKey, type: 'delta', content: input.text });
+        yield { type: 'delta', delta: input.text };
+      }
+      if (db) await appendTranscript(db, { sessionKey: handle.sessionKey, type: 'done', content: '' });
       yield { type: 'done', text: '' };
     }
     return generate();
