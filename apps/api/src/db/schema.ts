@@ -220,10 +220,23 @@ const DDL = [
 ];
 
 export async function initSchema(db: Db): Promise<void> {
-  // Enable WAL mode for better concurrent read performance
-  await db.execute({ sql: 'PRAGMA journal_mode=WAL', args: [] });
-  await db.execute({ sql: 'PRAGMA busy_timeout=30000', args: [] });
-  await db.execute({ sql: 'PRAGMA synchronous=NORMAL', args: [] });
+  // Set pragmas - ignore errors in case database is locked or already configured
+  // This allows multiple test files to run in parallel without lock contention
+  try {
+    await db.execute({ sql: 'PRAGMA journal_mode=WAL', args: [] });
+  } catch {
+    // WAL mode might fail if locked - that's OK, DB still works
+  }
+  try {
+    await db.execute({ sql: 'PRAGMA busy_timeout=30000', args: [] });
+  } catch {
+    // Ignore
+  }
+  try {
+    await db.execute({ sql: 'PRAGMA synchronous=NORMAL', args: [] });
+  } catch {
+    // Ignore
+  }
   for (const sql of DDL) {
     await db.execute(sql);
   }

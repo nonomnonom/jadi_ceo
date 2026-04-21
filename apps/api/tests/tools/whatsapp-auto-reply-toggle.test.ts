@@ -8,8 +8,12 @@ describe('WhatsApp auto-reply toggle', () => {
   beforeEach(async () => {
     const db = getDb();
     await initSchema(db);
-    // Default: auto-reply enabled (setting not set)
-    await db.execute({ sql: "DELETE FROM settings WHERE tenant_id = ?", args: [DEFAULT_TENANT_ID] });
+    // Only delete the whatsappAutoReply setting, not all settings
+    // This prevents interference with other tests that set different settings
+    await db.execute({
+      sql: "DELETE FROM settings WHERE tenant_id = ? AND key = ?",
+      args: [DEFAULT_TENANT_ID, 'whatsappAutoReply'],
+    });
     vi.clearAllMocks();
   });
 
