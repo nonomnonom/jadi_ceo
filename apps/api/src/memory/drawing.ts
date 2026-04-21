@@ -131,10 +131,10 @@ export async function deepDream(
 
   // Find memories that should be promoted to higher importance
   const allMemories = await db.execute({
-    sql: `SELECT id, content, importance, last_accessed_at, recall_count
+    sql: `SELECT m.id, m.content, m.importance, m.last_accessed_at, COALESCE(r.recall_count, 0) as recall_count
           FROM memory m
           LEFT JOIN memory_recalls r ON m.id = r.memory_id
-          WHERE tenant_id = ?`,
+          WHERE m.tenant_id = ?`,
     args: [tenantId],
   });
 
