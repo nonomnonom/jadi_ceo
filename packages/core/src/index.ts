@@ -31,6 +31,7 @@ export {
   resolveAgentConfig,
   resolveAgentSkills,
   resolveAgentTools,
+  resolveAgentModel,
   clearAgentConfigCache,
   type AgentConfig,
 } from './acp/agent-config.js';

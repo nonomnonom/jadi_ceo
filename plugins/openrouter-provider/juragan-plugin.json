@@ -1,0 +1,12 @@
+{
+  "id": "openrouter-provider",
+  "name": "OpenRouter AI Provider",
+  "version": "1.0.0",
+  "description": "OpenRouter AI provider — supports OpenAI-compatible models via OpenRouter gateway",
+  "providers": [
+    {
+      "id": "openrouter",
+      "type": "openrouter"
+    }
+  ]
+}

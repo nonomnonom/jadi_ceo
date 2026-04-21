@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { getPluginManager } from '../plugin-manager.js';
 
 // Re-export shared types
 export type { ToolDefinition } from './manager.js';
@@ -122,4 +123,42 @@ export function resolveAgentTools(agentId: string, tenantId: string, allToolIds:
 /** Clear the config cache (for testing) */
 export function clearAgentConfigCache(): void {
   configCache.clear();
+}
+
+const DEFAULT_MODEL = 'openrouter/anthropic/claude-sonnet-4-6';
+
+/**
+ * Resolve the AI model for an agent by consulting registered provider plugins.
+ *
+ * Resolution order:
+ * 1. Model from agent.yaml config (if set)
+ * 2. Provider's resolveModel() hook (registered providers)
+ * 3. Fallback chain: OpenRouter Sonnet → Haiku → GPT-4o-mini
+ * 4. Hard default: openrouter/anthropic/claude-sonnet-4-6
+ */
+export function resolveAgentModel(
+  agentId: string,
+  tenantId: string,
+  fallbackChain?: string[],
+): string {
+  // 1. Check agent.yaml config first
+  const config = resolveAgentConfig(agentId, tenantId);
+  if (config?.model) {
+    return config.model;
+  }
+
+  // 2. Ask registered providers in order
+  const manager = getPluginManager();
+  const providers = manager.getProviders();
+  const chain = fallbackChain ?? [DEFAULT_MODEL];
+
+  for (const provider of providers) {
+    if (provider.resolveModel) {
+      const resolved = provider.resolveModel({ fallbackChain: chain });
+      if (resolved) return resolved;
+    }
+  }
+
+  // 3. Return first in fallback chain
+  return chain[0] ?? DEFAULT_MODEL;
 }
