@@ -12,6 +12,7 @@
  */
 
 import { z } from 'zod';
+import { upsertAcpSession } from './session-persistence.js';
 
 // Re-export shared types from plugin-sdk for convenience
 export type { ToolDefinition, ToolContext } from '@juragan/plugin-sdk';
@@ -47,6 +48,7 @@ export const InitializeSessionSchema = z.object({
   threadType: z.enum(['current', 'child']).default('current'),
   parentSessionKey: z.string().optional(),
   workspacePath: z.string().optional(),
+  tenantId: z.string().min(1).default('default'),
 });
 export type InitializeSessionParams = z.infer<typeof InitializeSessionSchema>;
 
@@ -69,6 +71,7 @@ export const SpawnParamsSchema = z.object({
   resumeSessionKey: z.string().optional(),
   threadType: z.enum(['current', 'child']).default('child'),
   streamTo: z.string().optional(),
+  tenantId: z.string().min(1).optional(),
 });
 export type SpawnParams = z.infer<typeof SpawnParamsSchema>;
 
@@ -178,12 +181,18 @@ class AcpSessionManager {
   private sessionQueues = new Map<string, SessionActorQueue>();
   private runtimeCache = new RuntimeCache();
   private detachedTasks = new Map<string, DetachedTaskRun[]>();
+  private db: { execute: (op: { sql: string; args?: unknown[] }) => Promise<unknown> } | null = null;
 
   static getInstance(): AcpSessionManager {
     if (!AcpSessionManager.instance) {
       AcpSessionManager.instance = new AcpSessionManager();
     }
     return AcpSessionManager.instance;
+  }
+
+  /** Wire a LibSQL db instance for persistence (call once at startup) */
+  setDb(db: { execute: (op: { sql: string; args?: unknown[] }) => Promise<unknown> }): void {
+    this.db = db;
   }
 
   private getOrCreateQueue(sessionKey: string): SessionActorQueue {
@@ -206,6 +215,16 @@ class AcpSessionManager {
         createdAt: Date.now(),
       };
       this.runtimeCache.set(valid.sessionKey, handle);
+      // Persist session to LibSQL if db is wired
+      if (this.db) {
+        await upsertAcpSession(this.db, {
+          sessionKey: valid.sessionKey,
+          tenantId: valid.tenantId,
+          agentId: valid.agentId,
+          threadType: valid.threadType,
+          parentSessionKey: valid.parentSessionKey,
+        });
+      }
       return handle;
     });
   }
@@ -224,6 +243,16 @@ class AcpSessionManager {
 
   async closeSession(handle: SessionHandle): Promise<void> {
     this.runtimeCache.evict(handle.sessionKey);
+    if (this.db) {
+      await upsertAcpSession(this.db, {
+        sessionKey: handle.sessionKey,
+        tenantId: 'default',
+        agentId: handle.agentId,
+        threadType: handle.threadType,
+        parentSessionKey: handle.parentSessionKey,
+        status: 'closed',
+      });
+    }
   }
 
   getCachedSession(sessionKey: string): SessionHandle | undefined {

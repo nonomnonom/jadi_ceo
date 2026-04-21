@@ -53,6 +53,7 @@ export async function spawnAcpDirect(
     sessionKey,
     agentId: valid.agentId ?? 'owner-supervisor',
     threadType: valid.threadType,
+    tenantId: valid.tenantId ?? 'default',
   });
 
   if (valid.threadType === 'child') {

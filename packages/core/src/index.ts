@@ -34,3 +34,14 @@ export {
   clearAgentConfigCache,
   type AgentConfig,
 } from './acp/agent-config.js';
+export {
+  initAcpSchema,
+  upsertAcpSession,
+  getAcpSession,
+  appendTranscript,
+  listAcpSessionsByTenant,
+  pruneOldSessions,
+  acpSessionSchemaDDL,
+  type AcpSessionRecord,
+  type AcpTranscriptEntry,
+} from './acp/session-persistence.js';
