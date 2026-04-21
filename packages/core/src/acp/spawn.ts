@@ -112,7 +112,7 @@ export async function startAcpSpawnParentStreamRelay(
   const childHandle = manager.getCachedSession(childSessionKey);
   if (childHandle) {
     // Drain the child generator and relay deltas
-    const gen = await manager.runTurn(childHandle, {});
+    const gen = await manager.runTurnWithTranscript(childHandle, {});
     // eslint-disable-next-line no-empty
     for await (const _ of gen) { /* relay in step 3 real implementation */ }
   }
