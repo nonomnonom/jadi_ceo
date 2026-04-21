@@ -282,7 +282,7 @@
 
 - [x] 4.6.1 Implement `/skill [name]` (skill-commands.ts)
 - [x] 4.6.2 Implement `/retry` (retry-commands.ts)
-- [ ] 4.6.3 Implement `/thread [topic]`
+- [x] 4.6.3 Implement `/thread [topic]` (thread-commands.ts)
 
 ### 4.7 Phase 4 Verification
 
