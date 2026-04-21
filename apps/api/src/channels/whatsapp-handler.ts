@@ -1,15 +1,23 @@
-import { type WASocket, WAMessage } from 'baileys';
+import { type WASocket } from 'baileys';
 import { customerAgent } from '../mastra/agents/customer/index.js';
 import { getDb } from '../db/client.js';
 import { DEFAULT_TENANT_ID } from '@juragan/shared';
 import { createLogConversationTool } from '../mastra/tools/customer/workspace.js';
+import { createWhatsAppAutoReplySetting } from '../mastra/tools/settings.js';
+import { createTelegramSender } from '../reminders/executor.js';
 
 const db = getDb();
 const logConversation = createLogConversationTool({ db, tenantId: DEFAULT_TENANT_ID });
+const { isAutoReplyEnabled } = createWhatsAppAutoReplySetting({ db, tenantId: DEFAULT_TENANT_ID });
 
 export function createWhatsAppHandler(sock: WASocket): void {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
+
+    // Check auto-reply setting once per batch
+    const autoReplyEnabled = await isAutoReplyEnabled();
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const ownerChatId = process.env.TELEGRAM_OWNER_CHAT_ID;
 
     for (const msg of messages) {
       // Skip own messages (outbound from us)
@@ -38,6 +46,19 @@ export function createWhatsAppHandler(sock: WASocket): void {
         message: textContent,
         messageId: msg.key.id ?? undefined,
       });
+
+      if (!autoReplyEnabled) {
+        // Notify owner via Telegram instead of auto-replying
+        if (botToken && ownerChatId) {
+          const send = createTelegramSender(botToken);
+          const safePhone = phone.replace(/^\+/, '');
+          await send(
+            ownerChatId,
+            `📩 <b>Pesan WhatsApp baru (auto-reply OFF)</b>\n\nDari: <code>${safePhone}</code>\nPesan: ${textContent.slice(0, 500)}`,
+          );
+        }
+        continue; // skip auto-reply
+      }
 
       // Run customer agent
       const response = await customerAgent.generate({

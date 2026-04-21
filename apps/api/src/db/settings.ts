@@ -1,6 +1,10 @@
 import type { Db } from './client.js';
 
-export type SettingKey = 'openrouterApiKey' | 'telegramBotToken' | 'telegramOwnerChatId';
+export type SettingKey =
+  | 'openrouterApiKey'
+  | 'telegramBotToken'
+  | 'telegramOwnerChatId'
+  | 'whatsappAutoReply';
 
 export async function getSetting(
   db: Db,
@@ -32,6 +36,7 @@ export async function setSetting(
 
 export function maskSecret(value: string | null): string | null {
   if (!value) return null;
-  if (value.length <= 4) return '•'.repeat(value.length);
-  return `${'•'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}`;
+  const len = value.length;
+  if (len <= 4) return '•'.repeat(len);
+  return `${'•'.repeat(len - 4)}${value.slice(-4)}`;
 }

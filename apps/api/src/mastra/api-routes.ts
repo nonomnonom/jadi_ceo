@@ -78,10 +78,12 @@ export const apiRoutes = [
       const openrouterApiKey = await getSetting(db, tenantId, 'openrouterApiKey');
       const telegramBotToken = await getSetting(db, tenantId, 'telegramBotToken');
       const telegramOwnerChatId = await getSetting(db, tenantId, 'telegramOwnerChatId');
+      const whatsappAutoReply = await getSetting(db, tenantId, 'whatsappAutoReply');
       return c.json({
         openrouterApiKey: maskSecret(openrouterApiKey),
         telegramBotToken: maskSecret(telegramBotToken),
         telegramOwnerChatId,
+        whatsappAutoReply: whatsappAutoReply === null ? true : whatsappAutoReply === 'true',
         configured: Boolean(openrouterApiKey),
         envHasOpenRouter: Boolean(process.env.OPENROUTER_API_KEY),
       });
@@ -100,6 +102,7 @@ export const apiRoutes = [
         openrouterApiKey?: string;
         telegramBotToken?: string;
         telegramOwnerChatId?: string;
+        whatsappAutoReply?: boolean;
       } | null;
       if (!body) return c.json({ error: 'Invalid JSON body' }, 400);
       const db = getDb();
@@ -116,9 +119,13 @@ export const apiRoutes = [
         await setSetting(db, tenantId, 'telegramOwnerChatId', body.telegramOwnerChatId);
         saved.push('telegramOwnerChatId');
       }
+      if (typeof body.whatsappAutoReply === 'boolean') {
+        await setSetting(db, tenantId, 'whatsappAutoReply', String(body.whatsappAutoReply));
+        saved.push('whatsappAutoReply');
+      }
       return c.json({
         saved,
-        restartRequired: saved.some((k) => k !== 'telegramOwnerChatId'),
+        restartRequired: saved.some((k) => k !== 'telegramOwnerChatId' && k !== 'whatsappAutoReply'),
       });
     },
   }),
