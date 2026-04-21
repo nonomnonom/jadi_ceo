@@ -1,7 +1,27 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export type SkillCommandDeps = { db: unknown; tenantId: string };
+
+const SKILLS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../../skills');
+
+function loadSkillInstructions(skillName: string): string | null {
+  const skillPath = join(SKILLS_DIR, `${skillName}/SKILL.md`);
+  if (!existsSync(skillPath)) {
+    return null;
+  }
+  try {
+    const content = readFileSync(skillPath, 'utf-8');
+    // Strip YAML frontmatter
+    const withoutFrontmatter = content.replace(/^---[\s\S]*?---\n?/, '');
+    return withoutFrontmatter.trim();
+  } catch {
+    return null;
+  }
+}
 
 export function createSkillCommandTools(_deps: SkillCommandDeps) {
   const listSkills = createTool({
@@ -79,25 +99,38 @@ export function createSkillCommandTools(_deps: SkillCommandDeps) {
       message: z.string(),
     }),
     execute: async ({ name, context: _context }) => {
-      // Skill runner would execute the skill here
-      // For now, return a placeholder message
-      const skillMessages: Record<string, string> = {
-        'daily-checkin': '📋 Daily check-in...\n\n• Laporan belum diimplementasi\n• Cek invoice overdue\n• Reminder aktif',
-        'customer-followup': '📞 Customer follow-up...\n\n• Masih dalam pengembangan\n• Fitur penagihan akan segera hadir',
-        'price-calculation': '🧮 Price calculation...\n\n• Masukkan: harga modal, margin yang diinginkan\n• Hitung otomatis harga jual',
-        'stock-opname': '📦 Stock opname...\n\n• Masih dalam pengembangan\n• Fitur stock opname akan segera hadir',
-        'supplier-order': '📝 Supplier order...\n\n• Masih dalam pengembangan\n• Fitur PO supplier akan segera hadir',
-        'wa-blast': '📱 WA blast...\n\n• Masih dalam pengembangan\n• Fitur broadcast akan segera hadir',
-        'invoice-reminder': '📅 Invoice reminder...\n\n• Masih dalam pengembangan\n• Fitur reminder akan segera hadir',
-        'expense-claim': '💰 Expense claim...\n\n• Masih dalam pengembangan\n• Fitur claim akan segera hadir',
-      };
+      const VALID_SKILLS = [
+        'daily-checkin',
+        'customer-followup',
+        'price-calculation',
+        'stock-opname',
+        'supplier-order',
+        'wa-blast',
+        'invoice-reminder',
+        'expense-claim',
+      ];
 
-      const message = skillMessages[name] || `Skill "${name}" tidak ditemukan. Ketik /skill untuk melihat daftar skill.`;
+      if (!VALID_SKILLS.includes(name)) {
+        return {
+          success: false,
+          skillName: name,
+          message: `Skill "${name}" tidak ditemukan. Ketik /skill untuk melihat daftar skill.`,
+        };
+      }
+
+      const instructions = loadSkillInstructions(name);
+      if (!instructions) {
+        return {
+          success: false,
+          skillName: name,
+          message: `Skill "${name}" tidak dapat dibaca.`,
+        };
+      }
 
       return {
-        success: name in skillMessages,
+        success: true,
         skillName: name,
-        message,
+        message: instructions,
       };
     },
   });
