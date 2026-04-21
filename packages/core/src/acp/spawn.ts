@@ -73,17 +73,23 @@ export async function spawnAcpDirect(
  * Wire a child session's output stream to the parent session.
  * Buffers deltas and flushes them to the parent's conversation.
  *
- * Note: actual parent output routing depends on how the Mastra agent stores
- * its output stream — this function sets up the relay infrastructure.
+ * @param parentSessionKey - the session receiving the relayed output
+ * @param childSessionKey  - the child session whose output is relayed
+ * @param options.stallTimeout   - ms before calling onStall (default 60s)
+ * @param options.lifetimeTimeout - ms before auto-close (default 6h)
+ * @param options.onStall  - called when child produces no output for stallTimeout
+ * @param options.onChildDone - called when child finishes or lifetime expires
+ * @param options.onDelta  - called for each delta text relayed (optional)
  */
 export async function startAcpSpawnParentStreamRelay(
-  _parentSessionKey: string,
+  parentSessionKey: string,
   childSessionKey: string,
   options: {
     stallTimeout?: number;
     lifetimeTimeout?: number;
     onStall?: (childKey: string) => void;
     onChildDone?: (childKey: string) => void;
+    onDelta?: (delta: string, parentKey: string) => void;
   } = {},
 ): Promise<{
   stop: () => void;
@@ -92,32 +98,55 @@ export async function startAcpSpawnParentStreamRelay(
   const stallTimeout = options.stallTimeout ?? 60_000;
   const lifetimeTimeout = options.lifetimeTimeout ?? 6 * 60 * 60_000;
 
-  let stallTimer = setTimeout(() => {
+  let stalled = false;
+  let stallTimer: ReturnType<typeof setTimeout>;
+  let lifetimeTimer: ReturnType<typeof setTimeout>;
+
+  const clearTimers = () => {
+    clearTimeout(stallTimer);
+    clearTimeout(lifetimeTimer);
+  };
+
+  const stop = () => {
+    clearTimers();
+    options.onChildDone?.(childSessionKey);
+  };
+
+  stallTimer = setTimeout(() => {
+    stalled = true;
     options.onStall?.(childSessionKey);
   }, stallTimeout);
 
-  let lifetimeTimer = setTimeout(() => {
+  lifetimeTimer = setTimeout(() => {
     stop();
     manager.closeSession({ sessionKey: childSessionKey, agentId: '', threadType: 'child', createdAt: 0 });
   }, lifetimeTimeout);
 
-  function stop() {
-    clearTimeout(stallTimer);
-    clearTimeout(lifetimeTimer);
-    options.onChildDone?.(childSessionKey);
-  }
-
-  // Start a turn on the child session (non-blocking for the relay)
-  // The relay reads deltas from the child and flushes them to the parent
+  // Drain the child generator and relay deltas to parent
   const childHandle = manager.getCachedSession(childSessionKey);
   if (childHandle) {
-    // Drain the child generator and relay deltas
     const gen = await manager.runTurnWithTranscript(childHandle, {});
-    // eslint-disable-next-line no-empty
-    for await (const _ of gen) { /* relay in step 3 real implementation */ }
+    for await (const event of gen) {
+      if (stalled) {
+        // Reset stall timer on activity
+        stalled = false;
+        stallTimer = setTimeout(() => {
+          options.onStall?.(childSessionKey);
+        }, stallTimeout);
+      }
+      if (event.type === 'delta' && event.delta) {
+        options.onDelta?.(event.delta, parentSessionKey);
+      }
+      if (event.type === 'done' || event.type === 'error') {
+        stop();
+        break;
+      }
+    }
+  } else {
+    stop();
   }
 
-  return { stop };
+  return { stop: () => clearTimers() };
 }
 
 /**
