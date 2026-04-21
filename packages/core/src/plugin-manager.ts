@@ -141,6 +141,13 @@ class PluginManagerImpl {
   }
 
   getSkills(): SkillManifest[] {
+    if (this.skills.length === 0) {
+      // Lazy discovery: if called before discoverSkills() was invoked (e.g. in tests),
+      // try loading from the default skills/ directory relative to cwd.
+      this.discoverSkills(join(process.cwd(), 'skills')).catch(() => {
+        // Ignore — skills will remain empty
+      });
+    }
     return [...this.skills];
   }
 

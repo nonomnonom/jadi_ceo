@@ -3,9 +3,12 @@ import { z } from 'zod';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getPluginManager } from '@juragan/core';
 
 export type SkillCommandDeps = { db: unknown; tenantId: string };
 
+// Resolve skills dir from owner-supervisor level: apps/api/src/mastra/tools/owner/
+// Then ../../../../ → Juragan/
 const SKILLS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../../skills');
 
 function loadSkillInstructions(skillName: string): string | null {
@@ -38,50 +41,19 @@ export function createSkillCommandTools(_deps: SkillCommandDeps) {
       ),
     }),
     execute: async () => {
-      const skills = [
-        {
-          name: 'daily-checkin',
-          description: 'Ringkasan pagi — laporan rutin, cek invoice overdue, reminder.',
-          trigger: ['ringkasan pagi', 'laporan hari ini', 'daily check'],
-        },
-        {
-          name: 'customer-followup',
-          description: 'Tagih customer belum bayar — bikin pesan WA penagihan.',
-          trigger: ['tagih', 'nagih', 'belum bayar', 'piutang'],
-        },
-        {
-          name: 'price-calculation',
-          description: 'Hitung harga jual, HPP, margin, markup.',
-          trigger: ['harga jual', 'hpp', 'margin', 'markup', 'hitung harga'],
-        },
-        {
-          name: 'stock-opname',
-          description: 'Cek stok fisik vs sistem — variance report.',
-          trigger: ['stock opname', 'cek stok fisik', 'opname'],
-        },
-        {
-          name: 'supplier-order',
-          description: 'Draft PO ke supplier — cek stok, bikin purchase order.',
-          trigger: ['po supplier', 'order ke supplier', 'purchase order'],
-        },
-        {
-          name: 'wa-blast',
-          description: 'Kirim pesan ke semua customer — draft dulu, baru kirim.',
-          trigger: ['blast wa', 'kirim ke semua customer', 'broadcast'],
-        },
-        {
-          name: 'invoice-reminder',
-          description: 'Reminder invoice jatuh tempo — nagih customer.',
-          trigger: ['reminder invoice', 'jatuh tempo', 'invoice overdue'],
-        },
-        {
-          name: 'expense-claim',
-          description: 'Claim biaya karyawan — submit, owner approve, catat.',
-          trigger: ['expense claim', 'claim biaya', 'reimburse'],
-        },
-      ];
-
-      return { skills };
+      // Ensure skills are discovered first (handles lazy init in tests)
+      const manager = getPluginManager();
+      if (manager.getSkills().length === 0) {
+        await manager.discoverSkills(SKILLS_DIR);
+      }
+      const skills = manager.getSkills();
+      return {
+        skills: skills.map((s) => ({
+          name: s.id,
+          description: s.description,
+          trigger: s.triggers,
+        })),
+      };
     },
   });
 
@@ -99,18 +71,13 @@ export function createSkillCommandTools(_deps: SkillCommandDeps) {
       message: z.string(),
     }),
     execute: async ({ name, context: _context }) => {
-      const VALID_SKILLS = [
-        'daily-checkin',
-        'customer-followup',
-        'price-calculation',
-        'stock-opname',
-        'supplier-order',
-        'wa-blast',
-        'invoice-reminder',
-        'expense-claim',
-      ];
+      const manager = getPluginManager();
+      if (manager.getSkills().length === 0) {
+        await manager.discoverSkills(SKILLS_DIR);
+      }
+      const skills = manager.getSkills();
 
-      if (!VALID_SKILLS.includes(name)) {
+      if (!skills.some((s) => s.id === name)) {
         return {
           success: false,
           skillName: name,
