@@ -3,6 +3,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
 import { createRequestCancelTool } from './request-cancel.js';
+import { createShippingTools } from './track-shipping.js';
 
 export type CustomerToolDeps = { db: Db; tenantId: string };
 
@@ -117,6 +118,15 @@ export function createCustomerTools({ db, tenantId }: CustomerToolDeps) {
   });
 
   const { requestCancel, getOrderTracking } = createRequestCancelTool({ db, tenantId });
+  const { trackShipping, requestShipping } = createShippingTools({ db, tenantId });
 
-  return { listProducts, createOrder, checkOrder, requestCancel, getOrderTracking };
+  return {
+    listProducts,
+    createOrder,
+    checkOrder,
+    requestCancel,
+    getOrderTracking,
+    trackShipping,
+    requestShipping,
+  };
 }

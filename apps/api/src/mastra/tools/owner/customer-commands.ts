@@ -263,5 +263,126 @@ export function createCustomerCommandTools({ db, tenantId }: CustomerCommandDeps
     },
   });
 
-  return { listCustomerOrders, viewCustomerConversation, getCustomerAnalytics };
+  const customerOverride = createTool({
+    id: 'customer-override',
+    description:
+      'Intervensi atau modifikasi pesanan customer secara langsung. Gunakan saat owner bilang "/customer override [id]" untuk mengubah status order atau parameter lainnya.',
+    inputSchema: z.object({
+      orderId: z.number().int().positive().describe('ID pesanan yang ingin diubah'),
+      action: z
+        .enum(['approve', 'reject', 'cancel', 'mark-paid', 'update-note'])
+        .describe('Aksi yang ingin dilakukan'),
+      reason: z.string().max(200).optional().describe('Alasan atau catatan untuk override'),
+    }),
+    outputSchema: z.object({
+      success: z.boolean(),
+      message: z.string(),
+      orderId: z.number().int(),
+      previousStatus: z.string().nullable(),
+      newStatus: z.string().nullable(),
+    }),
+    execute: async ({ orderId, action, reason }) => {
+      // Get current order
+      const orderResult = await db.execute({
+        sql: `SELECT o.id, o.customer_phone, o.status, o.payment_status, p.name as product_name
+              FROM orders o
+              JOIN products p ON o.product_id = p.id
+              WHERE o.id = ? AND o.tenant_id = ?`,
+        args: [orderId, tenantId],
+      });
+
+      if (orderResult.rows.length === 0) {
+        return {
+          success: false,
+          message: 'Order tidak ditemukan',
+          orderId,
+          previousStatus: null,
+          newStatus: null,
+        };
+      }
+
+      const order = orderResult.rows[0]!;
+      const previousStatus = String(order.status);
+      const now = Date.now();
+      let newStatus: string | null = null;
+
+      switch (action) {
+        case 'approve':
+          if (previousStatus !== 'pending') {
+            return {
+              success: false,
+              message: `Order sudah berstatus "${previousStatus}", tidak bisa di-approve`,
+              orderId,
+              previousStatus,
+              newStatus: null,
+            };
+          }
+          newStatus = 'approved';
+          await db.execute({
+            sql: "UPDATE orders SET status = ?, updated_at = ? WHERE id = ?",
+            args: [newStatus, now, orderId],
+          });
+          break;
+
+        case 'reject':
+          if (previousStatus !== 'pending') {
+            return {
+              success: false,
+              message: `Order sudah berstatus "${previousStatus}", tidak bisa di-reject`,
+              orderId,
+              previousStatus,
+              newStatus: null,
+            };
+          }
+          newStatus = 'rejected';
+          await db.execute({
+            sql: "UPDATE orders SET status = ?, updated_at = ? WHERE id = ?",
+            args: [newStatus, now, orderId],
+          });
+          break;
+
+        case 'cancel':
+          newStatus = 'cancelled';
+          await db.execute({
+            sql: "UPDATE orders SET status = ?, payment_status = 'cancelled', updated_at = ? WHERE id = ?",
+            args: [newStatus, now, orderId],
+          });
+          break;
+
+        case 'mark-paid':
+          newStatus = 'paid';
+          await db.execute({
+            sql: "UPDATE orders SET status = 'paid', payment_status = 'paid', updated_at = ? WHERE id = ?",
+            args: [now, orderId],
+          });
+          break;
+
+        default:
+          return {
+            success: false,
+            message: `Action "${action}" tidak dikenali`,
+            orderId,
+            previousStatus,
+            newStatus: null,
+          };
+      }
+
+      // Record status history
+      await db.execute({
+        sql: `INSERT INTO order_status_history (tenant_id, order_id, old_status, new_status, changed_by, note, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [tenantId, orderId, previousStatus, newStatus, 'owner-override', reason ?? null, now],
+      });
+
+      return {
+        success: true,
+        message: `Order #${orderId} di-${action}. Status: ${previousStatus} → ${newStatus}`,
+        orderId,
+        previousStatus,
+        newStatus,
+      };
+    },
+  });
+
+  return { listCustomerOrders, viewCustomerConversation, getCustomerAnalytics, customerOverride };
 }

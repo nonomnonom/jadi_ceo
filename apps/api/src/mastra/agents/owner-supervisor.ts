@@ -31,6 +31,7 @@ import { createExpenseCategoryTools } from '../tools/owner/expense-category.js';
 import { createSearchContactsTools } from '../tools/owner/search-contacts.js';
 import { createStockMovementTools } from '../tools/owner/stock-movements.js';
 import { createRetryCommandTools } from '../tools/owner/retry-commands.js';
+import { createThreadCommandTools } from '../tools/owner/thread-commands.js';
 
 const db = getDb();
 
@@ -47,7 +48,12 @@ const { createInvoice, listInvoices, markInvoicePaid } = createInvoiceTools({ db
 
 // Owner command tools
 const { listOrders, approveOrder, rejectOrder } = createOrderCommandTools({ db, tenantId });
-const { listCustomerOrders, viewCustomerConversation, getCustomerAnalytics } = createCustomerCommandTools({
+const {
+  listCustomerOrders,
+  viewCustomerConversation,
+  getCustomerAnalytics,
+  customerOverride,
+} = createCustomerCommandTools({
   db,
   tenantId,
 });
@@ -75,6 +81,7 @@ const { listExpenseCategories, addExpenseCategory, deleteExpenseCategory } = cre
 const { searchContacts, getContactDetail } = createSearchContactsTools({ db, tenantId });
 const { listStockMovements, getProductStockSummary } = createStockMovementTools({ db, tenantId });
 const { getRetryStatus, retryLastAction, clearRetry } = createRetryCommandTools({ db, tenantId });
+const { setThread, getThread, clearThread } = createThreadCommandTools({ db, tenantId });
 
 export const ownerWorkspace = createOwnerWorkspace(tenantId);
 
@@ -93,6 +100,7 @@ Gunakan tool yang sesuai saat owner mengetik perintah:
 - "/customer orders" → panggil list-customer-orders
 - "/customer view [phone]" → panggil view-customer-conversation
 - "/customer analytics" → panggil get-customer-analytics
+- "/customer override [id] [approve|reject|cancel|mark-paid]" → panggil customer-override
 
 ### /customer-agent - Kontrol Customer Agent
 - "/customer-agent status" → panggil get-customer-agent-status
@@ -137,6 +145,11 @@ Gunakan tool yang sesuai saat owner mengetik perintah:
 ### /retry - Retry Action Gagal
 - "/retry" → panggil retry-last-action untuk mengulang action terakhir yang gagal
 - "/retry status" → panggil get-retry-status untuk melihat apakah ada action yang bisa di-retry
+
+### /thread - Topik Percakapan
+- "/thread [topik]" → panggil set-thread untuk set topik aktif
+- "/thread" (tanpa argumen) → panggil get-thread untuk lihat topik aktif
+- "/thread clear" → panggil clear-thread untuk reset topik
 
 ## Delegasi ke Sub-Agent
 Untuk tugas spesifik, delegasi ke agent domain:
@@ -204,6 +217,7 @@ export const ownerSupervisor = new Agent({
     listCustomerOrders,
     viewCustomerConversation,
     getCustomerAnalytics,
+    customerOverride,
     // Agent control
     getCustomerAgentStatus,
     enableCustomerAgent,
@@ -239,6 +253,10 @@ export const ownerSupervisor = new Agent({
     getRetryStatus,
     retryLastAction,
     clearRetry,
+    // Thread context
+    setThread,
+    getThread,
+    clearThread,
   },
   workspace: ownerWorkspace,
   memory: new Memory({

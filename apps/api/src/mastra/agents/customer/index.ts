@@ -7,7 +7,15 @@ import { createRequestPaymentTool, createCheckPaymentTool } from '../../tools/cu
 
 const db = getDb();
 
-const { listProducts, createOrder, checkOrder, requestCancel, getOrderTracking } = createCustomerTools({
+const {
+  listProducts,
+  createOrder,
+  checkOrder,
+  requestCancel,
+  getOrderTracking,
+  trackShipping,
+  requestShipping,
+} = createCustomerTools({
   db,
   tenantId,
 });
@@ -70,6 +78,8 @@ export const customerAgent = new Agent({
     checkOrder,
     requestCancel,
     getOrderTracking,
+    trackShipping,
+    requestShipping,
     logConversation,
     requestPayment,
     checkPayment,
