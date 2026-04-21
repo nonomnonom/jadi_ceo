@@ -1,0 +1,25 @@
+{
+  "id": "core-tools",
+  "name": "Core Business Tools",
+  "version": "1.0.0",
+  "description": "Core CRUD tools: notes, transactions, products, contacts, invoices, reminders, scheduling",
+  "tools": [
+    "note-add",
+    "note-list",
+    "transaction-log",
+    "transaction-daily-summary",
+    "product-add",
+    "product-list",
+    "product-adjust-stock",
+    "contact-add",
+    "contact-list",
+    "invoice-create",
+    "invoice-list",
+    "invoice-mark-paid",
+    "reminder-set",
+    "reminder-list",
+    "scheduled-prompt-schedule",
+    "scheduled-prompt-list",
+    "scheduled-prompt-cancel"
+  ]
+}

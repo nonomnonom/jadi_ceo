@@ -1,0 +1,11 @@
+{
+  "name": "@juragan/core-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@juragan/plugin-sdk": "workspace:*",
+    "@juragan/shared": "workspace:*"
+  }
+}
