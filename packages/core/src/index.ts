@@ -17,3 +17,9 @@ export {
   type InitializeSessionParams,
   type SpawnParams,
 } from './acp/manager.js';
+export {
+  spawnAcpDirect,
+  startAcpSpawnParentStreamRelay,
+  prepareAcpThreadBinding,
+  type SpawnAcpResult,
+} from './acp/spawn.js';
