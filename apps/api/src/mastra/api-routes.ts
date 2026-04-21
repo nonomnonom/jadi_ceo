@@ -2,7 +2,7 @@ import { relative, resolve } from 'node:path';
 import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { registerApiRoute } from '@mastra/core/server';
 import QRCode from 'qrcode';
-import { getWhatsAppManager } from '../channels/whatsapp-manager.js';
+import { getWhatsAppManager, phoneToJid } from '../channels/whatsapp-manager.js';
 import { getDb } from '../db/client.js';
 import { type SettingKey, getSetting, maskSecret, setSetting } from '../db/settings.js';
 import { createTelegramSender, tickOnce } from '../reminders/executor.js';
@@ -422,6 +422,7 @@ export const apiRoutes = [
       const now = Date.now();
 
       if (body.status === 'completed') {
+        // Update payment + order status
         await db.execute({
           sql: "UPDATE payments SET status = 'completed', completed_at = ?, updated_at = ? WHERE order_id = ?",
           args: [now, now, body.order_id],
@@ -430,6 +431,24 @@ export const apiRoutes = [
           sql: "UPDATE orders SET payment_status = 'paid' WHERE id = ?",
           args: [body.order_id],
         });
+
+        // Look up customer phone from the order to send WA confirmation
+        const orderRow = await db.execute({
+          sql: 'SELECT customer_phone FROM orders WHERE id = ?',
+          args: [body.order_id],
+        });
+        if (orderRow.rows[0]) {
+          const customerPhone = String(orderRow.rows[0].customer_phone);
+          const jid = phoneToJid(customerPhone);
+          const amountFormatted = body.amount
+            ? `Rp ${body.amount.toLocaleString('id-ID')}`
+            : '';
+          const manager = getWhatsAppManager();
+          await manager.sendMessageToJid(jid, {
+            text: `✅ Pembayaran berhasil!\n\nOrder ID: ${body.order_id}\nJumlah: ${amountFormatted}\nMetode: ${body.payment_method ?? 'QRIS'}\n\nPesanan kamu akan segera diproses. Terima kasih!`,
+          });
+        }
+
         return c.json({ ok: true, status: 'completed' });
       }
 

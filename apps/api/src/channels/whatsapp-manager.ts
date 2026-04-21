@@ -20,6 +20,10 @@ export function getWhatsAppManager(): WhatsAppManager {
   return _manager;
 }
 
+export function phoneToJid(phone: string): string {
+  return phone.replace(/^\+/, '') + '@s.whatsapp.net';
+}
+
 class WhatsAppManager {
   private sock: WASocket | null = null;
   private latestQR: string | null = null;
@@ -51,7 +55,6 @@ class WhatsAppManager {
       }
     });
 
-    // Wire up WhatsApp → customer agent handler
     createWhatsAppHandler(this.sock);
   }
 
@@ -61,6 +64,18 @@ class WhatsAppManager {
       this.sock = null;
       this.latestQR = null;
     }
+  }
+
+  async sendMessageToJid(
+    jid: string,
+    content: { text?: string; image?: Buffer; caption?: string },
+  ): Promise<void> {
+    if (!this.sock) return;
+    await this.sock.sendMessage(jid, content);
+  }
+
+  getSocket(): WASocket | null {
+    return this.sock;
   }
 
   setQR(qr: string): void {
