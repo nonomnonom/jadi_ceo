@@ -2,11 +2,17 @@ import { useState } from 'react';
 import { Overview } from './components/Overview.tsx';
 import { Settings } from './components/Settings.tsx';
 import { Workspace } from './components/Workspace.tsx';
+import { ChannelStatus } from './components/ChannelStatus.tsx';
+import { AgentToggle } from './components/AgentToggle.tsx';
+import { OrdersTable } from './components/OrdersTable.tsx';
+import { ConversationsViewer } from './components/ConversationsViewer.tsx';
 
-type Tab = 'overview' | 'workspace' | 'settings';
+type Tab = 'overview' | 'workspace' | 'settings' | 'channels' | 'orders';
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'overview', label: 'Overview' },
+  { id: 'channels', label: 'Channels' },
+  { id: 'orders', label: 'Orders' },
   { id: 'workspace', label: 'Workspace' },
   { id: 'settings', label: 'Settings' },
 ];
@@ -42,6 +48,14 @@ export function App() {
 
       <main className="min-h-0 flex-1">
         {tab === 'overview' && <Overview />}
+        {tab === 'channels' && (
+          <div className="flex flex-col gap-4">
+            <ChannelStatus />
+            <AgentToggle />
+            <ConversationsViewer />
+          </div>
+        )}
+        {tab === 'orders' && <OrdersTable />}
         {tab === 'workspace' && <Workspace />}
         {tab === 'settings' && <Settings />}
       </main>

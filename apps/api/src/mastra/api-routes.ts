@@ -494,4 +494,189 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/agent-settings', {
+    method: 'GET',
+    openapi: {
+      summary: 'Get agent settings (customer agent enabled, model)',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const customerAgentEnabled = await getSetting(db, tenantId, 'customerAgentEnabled');
+      const ownerModel = await getSetting(db, tenantId, 'ownerModel');
+      return c.json({
+        customerAgentEnabled: customerAgentEnabled !== 'false',
+        ownerModel: ownerModel,
+      });
+    },
+  }),
+  registerApiRoute('/custom/agent-settings', {
+    method: 'POST',
+    openapi: {
+      summary: 'Update agent settings',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const body = (await c.req.json().catch(() => null)) as {
+        customerAgentEnabled?: boolean;
+        ownerModel?: string;
+      } | null;
+      if (!body) return c.json({ error: 'Invalid JSON body' }, 400);
+      const db = getDb();
+      if (typeof body.customerAgentEnabled === 'boolean') {
+        await setSetting(db, tenantId, 'customerAgentEnabled', String(body.customerAgentEnabled));
+      }
+      if (typeof body.ownerModel === 'string') {
+        await setSetting(db, tenantId, 'ownerModel', body.ownerModel);
+      }
+      return c.json({ ok: true });
+    },
+  }),
+  registerApiRoute('/custom/conversations', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all conversations for the tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 200);
+      const offset = parseInt(c.req.query('offset') ?? '0', 10);
+      const db = getDb();
+      const result = await db.execute({
+        sql: `SELECT id, channel, customer_phone, customer_name, last_message_at, created_at
+              FROM conversations
+              WHERE tenant_id = ?
+              ORDER BY last_message_at DESC
+              LIMIT ? OFFSET ?`,
+        args: [tenantId, limit, offset],
+      });
+      return c.json({
+        conversations: result.rows.map((r) => ({
+          id: Number(r.id),
+          channel: String(r.channel),
+          customerPhone: String(r.customer_phone),
+          customerName: r.customer_name ? String(r.customer_name) : null,
+          lastMessageAt: r.last_message_at != null ? Number(r.last_message_at) : null,
+          createdAt: Number(r.created_at),
+        })),
+        total: result.rows.length,
+      });
+    },
+  }),
+  registerApiRoute('/custom/conversations/:phone', {
+    method: 'GET',
+    openapi: {
+      summary: 'Get messages for a specific conversation by phone',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const phone = c.req.query('phone');
+      if (!phone) return c.json({ error: 'phone required' }, 400);
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 200);
+      const db = getDb();
+      const result = await db.execute({
+        sql: `SELECT id, channel, direction, content, created_at
+              FROM messages
+              WHERE tenant_id = ? AND customer_phone = ?
+              ORDER BY created_at ASC
+              LIMIT ?`,
+        args: [tenantId, phone, limit],
+      });
+      return c.json({
+        messages: result.rows.map((r) => ({
+          id: Number(r.id),
+          channel: String(r.channel),
+          direction: String(r.direction),
+          content: String(r.content),
+          createdAt: Number(r.created_at),
+        })),
+      });
+    },
+  }),
+  registerApiRoute('/custom/orders', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all orders for the tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const status = c.req.query('status');
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 200);
+      const db = getDb();
+      let sql = `SELECT o.id, o.customer_phone, o.customer_name, o.amount_idr, o.status,
+                       o.payment_status, o.created_at, o.updated_at,
+                       c.name as contact_name
+                FROM orders o
+                LEFT JOIN contacts c ON o.customer_phone = c.phone AND o.tenant_id = c.tenant_id
+                WHERE o.tenant_id = ?`;
+      const args: (string | number)[] = [tenantId];
+      if (status) {
+        sql += ' AND o.status = ?';
+        args.push(status);
+      }
+      sql += ' ORDER BY o.created_at DESC LIMIT ?';
+      args.push(limit);
+      const result = await db.execute({ sql, args });
+      return c.json({
+        orders: result.rows.map((r) => ({
+          id: Number(r.id),
+          customerPhone: String(r.customer_phone),
+          customerName: r.customer_name ? String(r.customer_name) : r.contact_name ?? null,
+          amountIdr: Number(r.amount_idr),
+          status: String(r.status),
+          paymentStatus: String(r.payment_status),
+          createdAt: Number(r.created_at),
+          updatedAt: Number(r.updated_at),
+        })),
+      });
+    },
+  }),
+  registerApiRoute('/custom/payment-simulate', {
+    method: 'POST',
+    openapi: {
+      summary: 'Simulate payment completion (sandbox only)',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const body = (await c.req.json().catch(() => null)) as { orderId?: number } | null;
+      if (!body?.orderId) return c.json({ error: 'orderId required' }, 400);
+
+      const db = getDb();
+      const now = Date.now();
+
+      // Update payment status
+      const paymentResult = await db.execute({
+        sql: `SELECT id FROM payments WHERE tenant_id = ? AND order_id = ? AND status = 'pending'`,
+        args: [tenantId, body.orderId],
+      });
+
+      if (paymentResult.rows.length === 0) {
+        return c.json({ error: 'Payment not found or not pending' }, 404);
+      }
+
+      await db.execute({
+        sql: "UPDATE payments SET status = 'completed', completed_at = ?, updated_at = ? WHERE order_id = ?",
+        args: [now, now, body.orderId],
+      });
+
+      await db.execute({
+        sql: "UPDATE orders SET payment_status = 'paid' WHERE id = ?",
+        args: [body.orderId],
+      });
+
+      return c.json({ ok: true, message: `Payment simulation successful for order #${body.orderId}` });
+    },
+  }),
 ];

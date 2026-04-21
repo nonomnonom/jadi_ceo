@@ -50,8 +50,8 @@ export class PakasirService {
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-      throw new Error(`Pakasir API error: ${err.error ?? response.status}`);
+      const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` })) as { error?: string };
+      throw new Error(`Pakasir API error: ${errData.error ?? response.status}`);
     }
 
     const data = (await response.json()) as {
@@ -144,6 +144,25 @@ export class PakasirService {
     await this.db.execute({
       sql: "UPDATE orders SET payment_status = 'paid' WHERE id = ? AND tenant_id = ?",
       args: [orderId, this.tenantId],
+    });
+  }
+
+  async cancelTransaction(orderId: string): Promise<void> {
+    const { project, apiKey } = await this.getCredentials();
+    const url = `${this.baseUrl}/transactioncancel`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project, order_id: orderId, api_key: apiKey }),
+    });
+    if (!response.ok) {
+      throw new Error(`Cancel failed: HTTP ${response.status}`);
+    }
+
+    const now = Date.now();
+    await this.db.execute({
+      sql: "UPDATE payments SET status = 'cancelled', updated_at = ? WHERE order_id = ? AND tenant_id = ? AND status = 'pending'",
+      args: [now, orderId, this.tenantId],
     });
   }
 }

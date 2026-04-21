@@ -6,7 +6,9 @@ export type SettingKey =
   | 'telegramOwnerChatId'
   | 'whatsappAutoReply'
   | 'pakasirProject'
-  | 'pakasirApiKey';
+  | 'pakasirApiKey'
+  | 'customerAgentEnabled'
+  | 'ownerModel';
 
 export async function getSetting(
   db: Db,

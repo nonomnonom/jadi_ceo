@@ -10,8 +10,8 @@ const db = getDb();
 const { listProducts, createOrder, checkOrder } = createCustomerTools({ db, tenantId });
 const logConversation = createLogConversationTool({ db, tenantId });
 const customerWorkspace = createCustomerWorkspace(tenantId);
-const { requestPayment, checkPayment } = createRequestPaymentTool({ db, tenantId });
-const { checkPayment: checkPaymentStatus } = createCheckPaymentTool({ db, tenantId });
+const { requestPayment } = createRequestPaymentTool({ db, tenantId });
+const { checkPayment } = createCheckPaymentTool({ db, tenantId });
 
 const instructions = `
 Kamu adalah asisten toko **Juragan** di WhatsApp. Customer mengontak kamu untuk bertanya produk dan membuat pesanan.

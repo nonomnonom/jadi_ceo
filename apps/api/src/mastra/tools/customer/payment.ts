@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import QRCode from 'qrcode';
 import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
-import { PakasirService } from '../../../services/pakasir.js';
+import { PakasirService, PakasirPaymentMethod } from '../../../services/pakasir.js';
 
 export type CustomerPaymentToolDeps = { db: Db; tenantId: string };
 
@@ -29,15 +29,16 @@ export function createRequestPaymentTool({ db, tenantId }: CustomerPaymentToolDe
       expiredAt: z.number().int().nullable(),
     }),
     execute: async ({ orderId, amountIdr, paymentMethod }) => {
+      const effectiveMethod = paymentMethod ?? 'qris';
       const service = new PakasirService({ db, tenantId });
       const result = await service.createTransaction({
         orderId: String(orderId),
         amount: amountIdr,
-        method: paymentMethod,
+        method: effectiveMethod as PakasirPaymentMethod,
       });
 
       let qrImage: string | null = null;
-      if (result.payment.paymentNumber && paymentMethod === 'qris') {
+      if (result.payment.paymentNumber && effectiveMethod === 'qris') {
         qrImage = await QRCode.toDataURL(result.payment.paymentNumber, {
           width: 256,
           margin: 2,
