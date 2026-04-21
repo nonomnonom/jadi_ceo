@@ -63,6 +63,7 @@ const {
   disableCustomerAgent,
   listRecentConversations,
   listAcpSessions,
+  spawnSubAgent,
 } = createAgentCtlTools({ db, tenantId });
 const { getCurrentModel, switchModel, listSupportedModels } = createModelCommandTools({
   db,
@@ -109,6 +110,9 @@ Gunakan tool yang sesuai saat owner mengetik perintah:
 - "/customer-agent disable" → panggil disable-customer-agent
 - "/customer-agent view-all" → panggil list-recent-conversations
 - "/customer-agent sessions" → panggil list-acp-sessions
+
+### /spawn - Spawn Sub-Agent
+- "/spawn [task]" → panggil spawn-sub-agent untuk jalankan task di background
 
 ### /model - Model AI
 - "/model" (tanpa argumen) → panggil get-current-model
@@ -174,7 +178,7 @@ Bahasa Indonesia casual tapi sopan (gunakan "kamu"/"owner"), singkat, langsung k
 
 ## Invalid Command Handling
 Jika owner mengirim perintah slash yang tidak kamu kenal (misal: "/xyz", "/foo bar"), JANGAN pura-pura menangani. Respons dengan:
-"Perintah tidak dikenal. Perintah yang tersedia: /order, /customer, /customer-agent, /model, /memory, /skill, /payment, /cashflow, /contact, /stock, /category, /retry. Ketik /skill untuk lihat skill lainnya."
+"Perintah tidak dikenal. Perintah yang tersedia: /order, /customer, /customer-agent, /model, /memory, /skill, /payment, /cashflow, /contact, /stock, /category, /retry, /spawn. Ketik /skill untuk lihat skill lainnya."
 `.trim();
 
 export const ownerSupervisor = new Agent({
@@ -226,6 +230,7 @@ export const ownerSupervisor = new Agent({
     disableCustomerAgent,
     listRecentConversations,
     listAcpSessions,
+    spawnSubAgent,
     // Model commands
     getCurrentModel,
     switchModel,

@@ -162,11 +162,37 @@ export function createAgentCtlTools({ db, tenantId }: AgentCtlDeps) {
     },
   });
 
+  const spawnSubAgent = createTool({
+    id: 'spawn-sub-agent',
+    description:
+      'Spawn a sub-agent task to handle a specific job asynchronously. Use when a task needs to run in background while parent agent continues.',
+    inputSchema: z.object({
+      task: z.string().describe('Task description for the sub-agent'),
+      label: z.string().optional().describe('Short label for tracking'),
+      agentId: z.string().optional().describe('Agent ID to spawn (default: owner-supervisor)'),
+    }),
+    outputSchema: z.object({
+      status: z.string(),
+      childSessionKey: z.string(),
+      runId: z.string().optional(),
+      error: z.string().optional(),
+    }),
+    execute: async ({ task, label, agentId }) => {
+      const { spawnAcpDirect } = await import('@juragan/core');
+      const result = await spawnAcpDirect(
+        { task, label, agentId, threadType: 'child' },
+        tenantId,
+      );
+      return result;
+    },
+  });
+
   return {
     getCustomerAgentStatus,
     enableCustomerAgent,
     disableCustomerAgent,
     listRecentConversations,
     listAcpSessions,
+    spawnSubAgent,
   };
 }
