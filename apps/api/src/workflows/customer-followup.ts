@@ -1,7 +1,9 @@
 import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { z } from 'zod';
+import { getDb } from '../db/client.js';
+import { formatIDR } from '@juragan/shared';
 
-// Step 1: Find overdue invoices
+// Step 1: Find overdue invoices from DB
 const findOverdueInvoicesStep = createStep({
   id: 'find-overdue-invoices',
   inputSchema: z.object({
@@ -13,21 +15,66 @@ const findOverdueInvoicesStep = createStep({
         id: z.number(),
         contactName: z.string(),
         phone: z.string().nullable(),
+        amountIdr: z.number(),
         amountFormatted: z.string(),
         dueDate: z.string(),
+        dueTimestamp: z.number(),
         daysOverdue: z.number(),
       }),
     ),
+    totalOverdue: z.number(),
+    totalAmount: z.number(),
   }),
   execute: async ({ inputData }) => {
-    // Will be connected to list-invoices with status: 'overdue'
+    const db = getDb();
+    const { tenantId } = inputData;
+    const now = Date.now();
+
+    const result = await db.execute({
+      sql: `SELECT i.id, i.contact_id, i.amount_idr, i.due_at,
+                    c.name as contact_name, c.phone
+             FROM invoices i
+             LEFT JOIN contacts c ON i.contact_id = c.id
+             WHERE i.tenant_id = ?
+               AND i.paid_at IS NULL
+               AND i.due_at IS NOT NULL
+               AND i.due_at < ?
+             ORDER BY i.due_at ASC`,
+      args: [tenantId, now],
+    });
+
+    const overdueInvoices = result.rows.map((r) => {
+      const dueTimestamp = Number(r.due_at);
+      const dueDate = new Date(dueTimestamp);
+      const daysOverdue = Math.floor((now - dueTimestamp) / (1000 * 60 * 60 * 24));
+
+      return {
+        id: Number(r.id),
+        contactName: r.contact_name ? String(r.contact_name) : 'Unknown',
+        phone: r.phone ? String(r.phone) : null,
+        amountIdr: Number(r.amount_idr),
+        amountFormatted: formatIDR(Number(r.amount_idr)),
+        dueDate: dueDate.toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        }),
+        dueTimestamp,
+        daysOverdue,
+      };
+    });
+
+    const totalAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amountIdr, 0);
+
     return {
-      overdueInvoices: [],
+      overdueInvoices,
+      totalOverdue: overdueInvoices.length,
+      totalAmount,
     };
   },
 });
 
-// Step 2: Draft WA reminder messages
+// Step 2: Draft WA reminder messages with tone based on days overdue
 const draftRemindersStep = createStep({
   id: 'draft-reminders',
   inputSchema: z.object({
@@ -36,8 +83,10 @@ const draftRemindersStep = createStep({
         id: z.number(),
         contactName: z.string(),
         phone: z.string().nullable(),
+        amountIdr: z.number(),
         amountFormatted: z.string(),
         dueDate: z.string(),
+        dueTimestamp: z.number(),
         daysOverdue: z.number(),
       }),
     ),
@@ -53,16 +102,19 @@ const draftRemindersStep = createStep({
       }),
     ),
     totalRecipients: z.number(),
+    totalAmountFormatted: z.string(),
   }),
   execute: async ({ inputData }) => {
-    const drafts = inputData.overdueInvoices.map((inv) => {
+    const { overdueInvoices } = inputData;
+
+    const drafts = overdueInvoices.map((inv) => {
       let tone: 'soft' | 'neutral' | 'firm';
       if (inv.daysOverdue < 7) tone = 'soft';
       else if (inv.daysOverdue < 14) tone = 'neutral';
       else tone = 'firm';
 
       const messages = {
-        soft: `Halo ${inv.contactName}! Btw mau ngingetin aja — invoice ${inv.amountFormatted} sebenarnya sudah jatuh tempo ${inv.dueDate} lho. Kalau sudah transfer, mohon konfirmasinya ya. Terima kasih! 🙏`,
+        soft: `Halo ${inv.contactName}! Btw mau ngingetin aja — invoice ${inv.amountFormatted} sebenarnya sudah jatuh tempo ${inv.dueDate} nih. Kalau sudah transfer, mohon konfirmasinya ya. Terima kasih! 🙏`,
         neutral: `Halo ${inv.contactName}, invoice ${inv.amountFormatted} sudah lewat jatuh tempo ${inv.daysOverdue} hari dari ${inv.dueDate}. Mohon konfirmasi kapan bisa dilunasi ya. Terima kasih.`,
         firm: `Halo ${inv.contactName}, invoice ${inv.amountFormatted} sudah lewat ${inv.daysOverdue} hari dari jatuh tempo ${inv.dueDate}. Mohon diselesaikan dalam 3 hari kerja. Kalau ada kendala, hubungi saya secepatnya. Terima kasih.`,
       };
@@ -76,14 +128,17 @@ const draftRemindersStep = createStep({
       };
     });
 
+    const totalAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amountIdr, 0);
+
     return {
       drafts,
       totalRecipients: drafts.length,
+      totalAmountFormatted: formatIDR(totalAmount),
     };
   },
 });
 
-// Step 3: Display drafts for owner review (suspend)
+// Step 3: Suspend for owner review and selection
 const reviewDraftsStep = createStep({
   id: 'review-drafts',
   inputSchema: z.object({
@@ -97,57 +152,119 @@ const reviewDraftsStep = createStep({
       }),
     ),
     totalRecipients: z.number(),
+    totalAmountFormatted: z.string(),
   }),
   outputSchema: z.object({
     approved: z.boolean(),
-    selectedDraftIds: z.array(z.number()).optional(),
-  }),
-  execute: async ({ inputData }) => {
-    // Suspends here — owner reviews drafts and decides which to send
-    // Returns when owner approves
-    return {
-      approved: true,
-      selectedDraftIds: inputData.drafts.map((d) => d.invoiceId),
-    };
-  },
-});
-
-// Step 4: Send (or prepare to send) approved drafts
-const sendRemindersStep = createStep({
-  id: 'send-reminders',
-  inputSchema: z.object({
-    approved: z.boolean(),
-    selectedDraftIds: z.array(z.number()).optional(),
-    drafts: z.array(
+    selectedDraftIds: z.array(z.number()),
+    selectedMessages: z.array(
       z.object({
         invoiceId: z.number(),
         contactName: z.string(),
         phone: z.string().nullable(),
-        tone: z.enum(['soft', 'neutral', 'firm']),
+        draftMessage: z.string(),
+      }),
+    ),
+  }),
+  resumeSchema: z.object({
+    action: z.enum(['approve', 'reject']),
+    selectedInvoiceIds: z.array(z.number()).optional(),
+  }),
+  execute: async ({ inputData, resumeData, suspend }) => {
+    const { drafts, totalRecipients, totalAmountFormatted } = inputData;
+
+    if (resumeData) {
+      const { action, selectedInvoiceIds } = resumeData;
+
+      if (action === 'reject') {
+        return {
+          approved: false,
+          selectedDraftIds: [],
+          selectedMessages: [],
+        };
+      }
+
+      const selectedIds = selectedInvoiceIds ?? drafts.map((d) => d.invoiceId);
+      const selectedMessages = drafts
+        .filter((d) => selectedIds.includes(d.invoiceId))
+        .map((d) => ({
+          invoiceId: d.invoiceId,
+          contactName: d.contactName,
+          phone: d.phone,
+          draftMessage: d.draftMessage,
+        }));
+
+      return {
+        approved: true,
+        selectedDraftIds: selectedIds,
+        selectedMessages,
+      };
+    }
+
+    // First run - suspend for owner review
+    const summary = `${totalRecipients} invoice overdue, total Rp ${totalAmountFormatted}`;
+
+    return suspend({
+      reason: `Invoice reminder siap: ${summary}. Ketik /followup approve untuk kirim semua, atau /followup approve [id1,id2] untuk pilih tertentu. /followup reject untuk batal.`,
+      drafts,
+      totalRecipients,
+      totalAmountFormatted,
+    });
+  },
+});
+
+// Step 4: Prepare reminder messages for sending
+const prepareRemindersStep = createStep({
+  id: 'prepare-reminders',
+  inputSchema: z.object({
+    approved: z.boolean(),
+    selectedMessages: z.array(
+      z.object({
+        invoiceId: z.number(),
+        contactName: z.string(),
+        phone: z.string().nullable(),
         draftMessage: z.string(),
       }),
     ),
   }),
   outputSchema: z.object({
+    success: z.boolean(),
     messagesPrepared: z.number(),
+    readyToSend: z.array(
+      z.object({
+        invoiceId: z.number(),
+        phone: z.string(),
+        message: z.string(),
+      }),
+    ),
     message: z.string(),
   }),
   execute: async ({ inputData }) => {
-    if (!inputData.approved) {
+    const { approved, selectedMessages } = inputData;
+
+    if (!approved || selectedMessages.length === 0) {
       return {
+        success: false,
         messagesPrepared: 0,
-        message: 'Owner rejected reminder sending',
+        readyToSend: [],
+        message: 'Tidak ada reminder yang akan dikirim',
       };
     }
 
-    const selectedIds = inputData.selectedDraftIds ?? [];
-    const toSend = inputData.drafts.filter((d) => selectedIds.includes(d.invoiceId));
+    // Filter out messages without phone numbers
+    const readyToSend = selectedMessages
+      .filter((m) => m.phone)
+      .map((m) => ({
+        invoiceId: m.invoiceId,
+        phone: m.phone!,
+        message: m.draftMessage,
+      }));
 
-    // Note: actual sending happens via WhatsApp channel
-    // This step prepares the messages for the agent to send
     return {
-      messagesPrepared: toSend.length,
-      message: `${toSend.length} reminder(s) ready to send via WhatsApp`,
+      success: true,
+      messagesPrepared: readyToSend.length,
+      readyToSend,
+      message: `${readyToSend.length} reminder(s) siap dikirim via WhatsApp`,
     };
   },
 });
@@ -161,12 +278,13 @@ export const customerFollowupWorkflow = createWorkflow({
   outputSchema: z.object({
     success: z.boolean(),
     messagesPrepared: z.number(),
+    message: z.string(),
   }),
 })
   .then(findOverdueInvoicesStep)
   .then(draftRemindersStep)
   .then(reviewDraftsStep)
-  .then(sendRemindersStep)
+  .then(prepareRemindersStep)
   .commit();
 
 export type CustomerFollowupWorkflow = typeof customerFollowupWorkflow;
