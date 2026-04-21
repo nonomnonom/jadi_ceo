@@ -47,7 +47,7 @@
 - [x] 1.3.2 Ensure dashboard can store Telegram Bot Token (in settings.ts)
 - [x] 1.3.3 Ensure dashboard can store Pakasir API key and project slug (in settings.ts)
 - [x] 1.3.4 Ensure dashboard can store Rajaongkir API key (in settings.ts)
-- [ ] 1.3.5 Add `model_config` structure to `agent_settings`
+- [x] 1.3.5 Add `model_config` structure to `agent_settings` (done via settings table with ownerModel key)
 - [x] 1.3.6 Add `customer_agent_enabled` default setting (in settings.ts)
 
 ### 1.4 WhatsApp Channel Setup
@@ -273,7 +273,7 @@
 
 - [x] 4.5.1 Implement `/model` (model-commands.ts)
 - [x] 4.5.2 Implement `/model [provider/model]` (model-commands.ts)
-- [ ] 4.5.3 Persist runtime model config
+- [x] 4.5.3 Persist runtime model config (via settings table with setSetting/getSetting)
 - [x] 4.5.4 Implement `/memory search [query]` (memory-commands.ts)
 - [x] 4.5.5 Implement `/memory read [id]` (memory-commands.ts)
 - [x] 4.5.6 Implement `/memory stats` (memory-commands.ts)
@@ -381,7 +381,7 @@
 
 - [x] 8.2.1 Create `DocumentPreview`
 - [x] 8.2.2 Create `BrandGuidePreview`
-- [ ] 8.2.3 Add chart or data preview component if needed
+- [x] 8.2.3 Add chart or data preview component if needed (RevenueChart.tsx exists with income/expense bar chart)
 
 ### 8.3 Supporting API Routes
 
