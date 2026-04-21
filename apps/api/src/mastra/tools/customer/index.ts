@@ -41,8 +41,7 @@ export function createCustomerTools({ db, tenantId }: CustomerToolDeps) {
 
   const createOrder = createTool({
     id: 'create-order',
-    description:
-      'Buat pesanan baru dari customer. Gunakan saat customer mau order produk.',
+    description: 'Buat pesanan baru dari customer. Gunakan saat customer mau order produk.',
     inputSchema: z.object({
       productId: z.number().int().positive(),
       qty: z.number().int().min(1),
@@ -62,7 +61,10 @@ export function createCustomerTools({ db, tenantId }: CustomerToolDeps) {
       if (productResult.rows.length === 0) {
         throw new Error('Produk tidak ditemukan');
       }
-      const product = productResult.rows[0]!;
+      const product = productResult.rows[0];
+      if (!product) {
+        throw new Error('Produk tidak ditemukan');
+      }
       if (Number(product.stock_qty) < qty) {
         throw new Error('Stok tidak cukup');
       }
@@ -73,7 +75,9 @@ export function createCustomerTools({ db, tenantId }: CustomerToolDeps) {
               VALUES (?, ?, ?, ?, ?, 'pending', 'unpaid', ?, ?) RETURNING id`,
         args: [tenantId, customerPhone, productId, qty, totalIdr, now, now],
       });
-      const orderId = Number(insertResult.rows[0]!.id);
+      const insertedRow = insertResult.rows[0];
+      if (!insertedRow) throw new Error('Gagal membuat pesanan');
+      const orderId = Number(insertedRow.id);
       return { orderId, status: 'pending' as const, totalIdr, createdAt: now };
     },
   });
@@ -99,7 +103,8 @@ export function createCustomerTools({ db, tenantId }: CustomerToolDeps) {
       if (result.rows.length === 0) {
         throw new Error('Order tidak ditemukan');
       }
-      const row = result.rows[0]!;
+      const row = result.rows[0];
+      if (!row) throw new Error('Order tidak ditemukan');
       return {
         orderId: Number(row.id),
         status: row.status as 'pending' | 'approved' | 'rejected' | 'paid' | 'cancelled',
