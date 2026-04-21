@@ -2,16 +2,19 @@ import { useEffect, useState } from 'react';
 import {
   type AgentInfo,
   type DailySummary,
+  type DashboardStats,
   type InvoiceListItem,
   type ProductListItem,
   getAgent,
   getDailySummary,
+  getDashboardStats,
   getLowStock,
   getOverdueInvoices,
 } from '../lib/api.ts';
 
 type State = {
   summary: DailySummary | null;
+  dashboard: DashboardStats | null;
   overdue: { invoices: InvoiceListItem[]; totalOutstandingFormatted: string } | null;
   lowStock: { products: ProductListItem[] } | null;
   agent: AgentInfo | null;
@@ -22,6 +25,7 @@ type State = {
 export function Overview() {
   const [s, setS] = useState<State>({
     summary: null,
+    dashboard: null,
     overdue: null,
     lowStock: null,
     agent: null,
@@ -31,10 +35,16 @@ export function Overview() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getDailySummary(), getOverdueInvoices(), getLowStock(), getAgent()])
-      .then(([summary, overdue, lowStock, agent]) => {
+    Promise.all([
+      getDailySummary(),
+      getDashboardStats(),
+      getOverdueInvoices(),
+      getLowStock(),
+      getAgent(),
+    ])
+      .then(([summary, dashboard, overdue, lowStock, agent]) => {
         if (cancelled) return;
-        setS({ summary, overdue, lowStock, agent, error: null, loading: false });
+        setS({ summary, dashboard, overdue, lowStock, agent, error: null, loading: false });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -51,7 +61,7 @@ export function Overview() {
 
   return (
     <div className="flex flex-col gap-5">
-      <StatsGrid summary={s.summary} overdue={s.overdue} lowStock={s.lowStock} />
+      <StatsGrid summary={s.summary} dashboard={s.dashboard} />
       <div className="grid gap-4 md:grid-cols-2">
         <OverdueCard overdue={s.overdue} />
         <LowStockCard lowStock={s.lowStock} />
@@ -63,25 +73,16 @@ export function Overview() {
 
 function StatsGrid({
   summary,
-  overdue,
-  lowStock,
+  dashboard,
 }: {
   summary: DailySummary | null;
-  overdue: State['overdue'];
-  lowStock: State['lowStock'];
+  dashboard: DashboardStats | null;
 }) {
-  const overdueCount = overdue?.invoices.length ?? 0;
-  const lowStockCount = lowStock?.products.length ?? 0;
-  const attention: Tone = overdueCount > 0 || lowStockCount > 0 ? 'warn' : 'positive';
-  const attentionLabel =
-    overdueCount === 0 && lowStockCount === 0
-      ? 'Aman'
-      : [
-          overdueCount > 0 ? `${overdueCount} invoice overdue` : null,
-          lowStockCount > 0 ? `${lowStockCount} stok menipis` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ');
+  const pendingOrders = dashboard?.ordersByStatus?.pending ?? 0;
+  const revenueFormatted = dashboard
+    ? `Rp ${dashboard.totalRevenueIdr.toLocaleString('id-ID')}`
+    : 'Rp 0';
+
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       <StatCard
@@ -95,11 +96,15 @@ function StatsGrid({
         tone="neutral"
       />
       <StatCard
-        label="Net hari ini"
-        value={summary?.netFormatted ?? 'Rp 0'}
-        tone={summary && summary.netIdr >= 0 ? 'positive' : 'warn'}
+        label="Total revenue"
+        value={revenueFormatted}
+        tone="positive"
       />
-      <StatCard label="Perlu perhatian" value={attentionLabel} tone={attention} />
+      <StatCard
+        label="Order pending"
+        value={String(pendingOrders)}
+        tone={pendingOrders > 0 ? 'warn' : 'positive'}
+      />
     </div>
   );
 }

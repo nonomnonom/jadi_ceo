@@ -170,3 +170,26 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
   if (!res.ok) throw new Error(`telegram status: ${res.status}`);
   return (await res.json()) as TelegramStatus;
 }
+
+// ---- Dashboard stats ----
+
+export type DashboardStats = {
+  totalOrders: number;
+  ordersByStatus: Record<string, number>;
+  totalRevenueIdr: number;
+  totalConversations: number;
+  recentOrders: Array<{
+    id: number;
+    customerPhone: string;
+    totalIdr: number;
+    status: string;
+    paymentStatus: string;
+    createdAt: number;
+  }>;
+};
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const res = await fetch('/custom/dashboard/stats', { headers: authHeaders() });
+  if (!res.ok) throw new Error(`dashboard stats: ${res.status}`);
+  return (await res.json()) as DashboardStats;
+}
