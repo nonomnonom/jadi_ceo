@@ -30,6 +30,7 @@ import { createCashflowReportTools } from '../tools/owner/cashflow-report.js';
 import { createExpenseCategoryTools } from '../tools/owner/expense-category.js';
 import { createSearchContactsTools } from '../tools/owner/search-contacts.js';
 import { createStockMovementTools } from '../tools/owner/stock-movements.js';
+import { createRetryCommandTools } from '../tools/owner/retry-commands.js';
 
 const db = getDb();
 
@@ -73,6 +74,7 @@ const { listExpenseCategories, addExpenseCategory, deleteExpenseCategory } = cre
 });
 const { searchContacts, getContactDetail } = createSearchContactsTools({ db, tenantId });
 const { listStockMovements, getProductStockSummary } = createStockMovementTools({ db, tenantId });
+const { getRetryStatus, retryLastAction, clearRetry } = createRetryCommandTools({ db, tenantId });
 
 export const ownerWorkspace = createOwnerWorkspace(tenantId);
 
@@ -131,6 +133,10 @@ Gunakan tool yang sesuai saat owner mengetik perintah:
 ### /category - Kategori Pengeluaran
 - "/category list" → panggil list-expense-categories
 - "/category add [nama]" → panggil add-expense-category
+
+### /retry - Retry Action Gagal
+- "/retry" → panggil retry-last-action untuk mengulang action terakhir yang gagal
+- "/retry status" → panggil get-retry-status untuk melihat apakah ada action yang bisa di-retry
 
 ## Delegasi ke Sub-Agent
 Untuk tugas spesifik, delegasi ke agent domain:
@@ -225,6 +231,10 @@ export const ownerSupervisor = new Agent({
     // Stock management
     listStockMovements,
     getProductStockSummary,
+    // Retry commands
+    getRetryStatus,
+    retryLastAction,
+    clearRetry,
   },
   workspace: ownerWorkspace,
   memory: new Memory({

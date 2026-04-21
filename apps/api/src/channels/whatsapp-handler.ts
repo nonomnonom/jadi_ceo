@@ -5,6 +5,7 @@ import { DEFAULT_TENANT_ID } from '@juragan/shared';
 import { createLogConversationTool } from '../mastra/tools/customer/workspace.js';
 import { createWhatsAppAutoReplySetting } from '../mastra/tools/settings.js';
 import { createTelegramSender } from '../reminders/executor.js';
+import { isWithinBusinessHours, isInVacationMode } from '../db/settings.js';
 
 const db = getDb();
 const logConversation = createLogConversationTool({ db, tenantId: DEFAULT_TENANT_ID });
@@ -73,6 +74,47 @@ export function createWhatsAppHandler(sock: WASocket): void {
           );
         }
         continue; // skip auto-reply
+      }
+
+      // Check vacation mode first
+      const vacationStatus = await isInVacationMode(db, DEFAULT_TENANT_ID);
+      if (vacationStatus.active && vacationStatus.message) {
+        await sock.sendMessage(senderJid, { text: vacationStatus.message });
+        await logConversation.execute({
+          channel: 'whatsapp',
+          customerPhone: phone,
+          direction: 'outbound',
+          message: vacationStatus.message,
+          messageId: undefined,
+        });
+        continue;
+      }
+
+      // Check business hours
+      const withinBusinessHours = await isWithinBusinessHours(db, DEFAULT_TENANT_ID);
+      if (!withinBusinessHours) {
+        const hoursResult = await db.execute({
+          sql: "SELECT value FROM settings WHERE tenant_id = ? AND key IN ('businessHoursStart', 'businessHoursEnd')",
+          args: [DEFAULT_TENANT_ID],
+        });
+        let start = '09:00';
+        let end = '21:00';
+        for (const row of hoursResult.rows) {
+          const key = String(row.key);
+          const val = String(row.value);
+          if (key === 'businessHoursStart') start = val;
+          if (key === 'businessHoursEnd') end = val;
+        }
+        const offlineMessage = `Halo! Terima kasih sudah menghubungi. Saat ini kami sedang di luar jam operasional (${start} - ${end} WIB). Pesan Anda akan kami respon saat jam operasional.`;
+        await sock.sendMessage(senderJid, { text: offlineMessage });
+        await logConversation.execute({
+          channel: 'whatsapp',
+          customerPhone: phone,
+          direction: 'outbound',
+          message: offlineMessage,
+          messageId: undefined,
+        });
+        continue;
       }
 
       // Run customer agent

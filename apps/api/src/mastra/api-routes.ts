@@ -792,4 +792,143 @@ export const apiRoutes = [
       return c.json({ ok: true, message: `Payment simulation successful for order #${body.orderId}` });
     },
   }),
+  registerApiRoute('/custom/documents', {
+    method: 'GET',
+    openapi: {
+      summary: 'List generated documents in owner workspace',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const fs = ownerWorkspace.filesystem;
+      if (!fs) return c.json({ documents: [] });
+
+      const docs: { name: string; path: string; type: 'markdown' | 'text' }[] = [];
+      try {
+        // Look in common document locations
+        const locations = [
+          'files/documents',
+          'files/proposals',
+          'files/reports',
+          'files',
+        ];
+
+        for (const loc of locations) {
+          try {
+            const entries = await fs.readdir(loc);
+            for (const entry of entries) {
+              if (entry.type === 'file') {
+                const ext = entry.name.split('.').pop()?.toLowerCase();
+                const type = ext === 'md' ? 'markdown' : 'text';
+                docs.push({
+                  name: entry.name,
+                  path: `${loc}/${entry.name}`,
+                  type,
+                });
+              }
+            }
+          } catch {
+            // Skip locations that don't exist
+          }
+        }
+      } catch {
+        // Return empty on error
+      }
+
+      return c.json({ documents: docs });
+    },
+  }),
+  registerApiRoute('/custom/documents/:path', {
+    method: 'GET',
+    openapi: {
+      summary: 'Read a document by path',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const path = decodeURIComponent(c.req.query('path') || '');
+      if (!path) return c.json({ error: 'path required' }, 400);
+      if (!workspacePathSafe(path)) return c.json({ error: 'path escapes workspace' }, 403);
+
+      const fs = ownerWorkspace.filesystem;
+      if (!fs) return c.json({ error: 'no filesystem' }, 500);
+
+      try {
+        const content = await fs.readFile(path, { encoding: 'utf-8' });
+        return c.json({
+          path,
+          content: typeof content === 'string' ? content : content.toString('utf-8'),
+        });
+      } catch {
+        return c.json({ error: 'Document not found' }, 404);
+      }
+    },
+  }),
+  registerApiRoute('/custom/brand-assets', {
+    method: 'GET',
+    openapi: {
+      summary: 'List brand design assets',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const fs = ownerWorkspace.filesystem;
+      if (!fs) return c.json({ assets: [] });
+
+      const assets: { name: string; path: string; type: 'css' | 'html' | 'json'; preview: string | null }[] = [];
+      const locations = ['design-system', 'files/design'];
+
+      for (const loc of locations) {
+        try {
+          const entries = await fs.readdir(loc);
+          for (const entry of entries) {
+            if (entry.type === 'file') {
+              const ext = entry.name.split('.').pop()?.toLowerCase();
+              if (['css', 'html', 'json'].includes(ext || '')) {
+                assets.push({
+                  name: entry.name,
+                  path: `${loc}/${entry.name}`,
+                  type: ext as 'css' | 'html' | 'json',
+                  preview: null,
+                });
+              }
+            }
+          }
+        } catch {
+          // Skip
+        }
+      }
+
+      return c.json({ assets });
+    },
+  }),
+  registerApiRoute('/custom/brand-assets/:path', {
+    method: 'GET',
+    openapi: {
+      summary: 'Read a brand asset file',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const path = decodeURIComponent(c.req.query('path') || '');
+      if (!path) return c.json({ error: 'path required' }, 400);
+      if (!workspacePathSafe(path)) return c.json({ error: 'path escapes workspace' }, 403);
+
+      const fs = ownerWorkspace.filesystem;
+      if (!fs) return c.json({ error: 'no filesystem' }, 500);
+
+      try {
+        const content = await fs.readFile(path, { encoding: 'utf-8' });
+        return c.json({
+          content: typeof content === 'string' ? content : content.toString('utf-8'),
+        });
+      } catch {
+        return c.json({ error: 'Asset not found' }, 404);
+      }
+    },
+  }),
 ];
