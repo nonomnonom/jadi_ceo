@@ -340,7 +340,7 @@
 ### 7.1 Order Approval Workflow
 
 - [x] 7.1.1 Create `order-approval.ts` (stub implementation)
-- [ ] 7.1.2 Add check order step
+- [ ] 7.1.2 Add check order step (needs DB integration)
 - [ ] 7.1.3 Add notify owner step
 - [ ] 7.1.4 Add suspend for approval
 - [ ] 7.1.5 Add notify customer step
@@ -348,7 +348,7 @@
 ### 7.2 Restock Workflow
 
 - [x] 7.2.1 Create `restock.ts` (stub implementation)
-- [ ] 7.2.2 Add low stock analysis step
+- [ ] 7.2.2 Add low stock analysis step (needs DB integration)
 - [ ] 7.2.3 Add supplier lookup step
 - [ ] 7.2.4 Add draft PO step
 - [ ] 7.2.5 Add suspend for approval
@@ -357,7 +357,7 @@
 ### 7.3 Customer Follow-Up Workflow
 
 - [x] 7.3.1 Create `customer-followup.ts` (stub implementation)
-- [ ] 7.3.2 Find overdue invoices
+- [ ] 7.3.2 Find overdue invoices (needs DB integration)
 - [ ] 7.3.3 Draft follow-up content
 - [ ] 7.3.4 Send to owner for review if needed
 
