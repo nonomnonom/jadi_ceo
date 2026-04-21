@@ -65,6 +65,16 @@ async function telegramGetMe(
 }
 
 export const apiRoutes = [
+  registerApiRoute('/health', {
+    method: 'GET',
+    openapi: {
+      summary: 'Health check endpoint',
+      tags: ['health'],
+    },
+    handler: async () => {
+      return Response.json({ status: 'ok', timestamp: Date.now() });
+    },
+  }),
   registerApiRoute('/custom/settings', {
     method: 'GET',
     openapi: {
