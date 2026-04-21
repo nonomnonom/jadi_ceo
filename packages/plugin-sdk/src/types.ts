@@ -14,7 +14,7 @@ export const PluginManifestSchema = z.object({
       z.object({
         id: z.string().min(1),
         type: z.enum(['telegram', 'whatsapp', 'instagram', 'email', 'webhook']),
-      })
+      }),
     )
     .optional()
     .default([]),
@@ -23,7 +23,7 @@ export const PluginManifestSchema = z.object({
       z.object({
         id: z.string().min(1),
         type: z.enum(['openrouter', 'openai', 'anthropic', 'google']),
-      })
+      }),
     )
     .optional()
     .default([]),
@@ -73,7 +73,7 @@ export interface CommandDefinition {
 
 export type CommandHandler = (
   args: string | undefined,
-  ctx: CommandContext
+  ctx: CommandContext,
 ) => Promise<CommandResult>;
 
 export interface CommandContext {
@@ -243,10 +243,7 @@ export interface ToolDefinition {
   requireConfirmation?: boolean;
 }
 
-export type ToolHandler = (
-  input: unknown,
-  ctx: ToolContext
-) => Promise<unknown>;
+export type ToolHandler = (input: unknown, ctx: ToolContext) => Promise<unknown>;
 
 export interface ToolContext {
   tenantId: string;
@@ -286,9 +283,7 @@ export { z };
  * Plugin entry point signature.
  * All Juragan plugins must export a default function matching this signature.
  */
-export interface PluginEntryPoint {
-  (api: OpenClawPluginApi): Promise<void> | void;
-}
+export type PluginEntryPoint = (api: OpenClawPluginApi) => Promise<void> | void;
 
 export function definePluginEntry(
   manifest: {
@@ -297,13 +292,10 @@ export function definePluginEntry(
     version: string;
     description?: string;
   },
-  register: PluginEntryPoint
+  register: PluginEntryPoint,
 ): PluginEntryPoint {
-  // Validate manifest fields
   if (!manifest.id || !manifest.name || !manifest.version) {
-    throw new Error(
-      `[plugin-sdk] Plugin manifest must have id, name, and version`
-    );
+    throw new Error('[plugin-sdk] Plugin manifest must have id, name, and version');
   }
   return register;
 }
