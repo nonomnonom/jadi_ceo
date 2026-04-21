@@ -166,8 +166,8 @@
 
 - [x] 2.9.1 Create `request-cancel.ts`
 - [x] 2.9.2 Allow cancel only before `processing`
-- [ ] 2.9.3 Create `track-delivery.ts` (needs Rajaongkir tracking API)
-- [ ] 2.9.4 Return AWB or tracking summary if available
+- [x] 2.9.3 Create `track-delivery.ts` (via track-shipping.ts + Rajaongkir)
+- [x] 2.9.4 Return AWB or tracking summary if available
 
 ### 2.10 Phase 2 Verification
 
