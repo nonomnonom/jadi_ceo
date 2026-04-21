@@ -19,11 +19,13 @@
     "@mastra/core": "^1.25.0",
     "@mastra/libsql": "^1.8.1",
     "@mastra/memory": "^1.15.1",
+    "baileys": "7.0.0-rc.9",
     "zod": "^3.25.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^20.0.0",
+    "@types/qrcode": "^1.5.6",
     "mastra": "^1.6.0",
     "typescript": "5.9.2",
     "vitest": "^4.0.0"
