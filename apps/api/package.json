@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@chat-adapter/telegram": "^4.26.0",
+    "@juragan/core": "workspace:*",
     "@juragan/queue": "workspace:*",
     "@juragan/shared": "workspace:*",
     "@libsql/client": "^0.17.0",
