@@ -148,8 +148,8 @@
 - [x] 2.7.3 Implement city lookup
 - [x] 2.7.4 Implement shipping cost calculation
 - [x] 2.7.5 Create `calculate-shipping.ts` (via RajaongkirService)
-- [ ] 2.7.6 Create `track-shipping.ts`
-- [ ] 2.7.7 Create `request-shipping.ts`
+- [x] 2.7.6 Create `track-shipping.ts`
+- [x] 2.7.7 Create `request-shipping.ts`
 - [ ] 2.7.8 Add API routes for shipping lookup if dashboard uses them
 - [x] 2.7.9 Add 24-hour cache for province and city data
 
@@ -259,7 +259,7 @@
 
 - [x] 4.3.1 Implement `/customer orders` (customer-commands.ts)
 - [x] 4.3.2 Implement `/customer view [phone]` (customer-commands.ts)
-- [ ] 4.3.3 Implement `/customer override [id]`
+- [x] 4.3.3 Implement `/customer override [id]`
 - [x] 4.3.4 Implement optional `/customer analytics` (customer-commands.ts)
 
 ### 4.4 Customer Agent Commands
@@ -425,10 +425,10 @@
 
 ### 9.4 Deployment Readiness
 
-- [ ] 9.4.1 Update `docker-compose.yml`
-- [ ] 9.4.2 Add volume for WhatsApp auth persistence
-- [ ] 9.4.3 Update `.env.example`
-- [ ] 9.4.4 Document required environment variables
+- [x] 9.4.1 Update `docker-compose.yml` (docker-compose.prod.yml exists)
+- [x] 9.4.2 Add volume for WhatsApp auth persistence
+- [x] 9.4.3 Update `.env.example`
+- [x] 9.4.4 Document required environment variables
 - [ ] 9.4.5 Verify clean boot in a fresh environment
 
 ## Final Verification Checklist
