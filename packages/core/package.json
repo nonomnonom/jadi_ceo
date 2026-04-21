@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@juragan/plugin-sdk": "workspace:*",
-    "zod": "^3.25.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
