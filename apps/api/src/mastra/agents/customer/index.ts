@@ -2,10 +2,13 @@ import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { Agent } from '@mastra/core/agent';
 import { getDb } from '../../../db/client.js';
 import { createCustomerTools } from '../../tools/customer/index.js';
+import { createCustomerWorkspace, createLogConversationTool } from '../../tools/customer/workspace.js';
 
 const db = getDb();
 
 const { listProducts, createOrder, checkOrder } = createCustomerTools({ db, tenantId });
+const logConversation = createLogConversationTool({ db, tenantId });
+const customerWorkspace = createCustomerWorkspace(tenantId);
 
 const instructions = `
 Kamu adalah asisten toko **Juragan** di WhatsApp. Customer mengontak kamu untuk bertanya produk dan membuat pesanan.
@@ -42,5 +45,7 @@ export const customerAgent = new Agent({
     listProducts,
     createOrder,
     checkOrder,
+    logConversation,
   },
+  workspace: customerWorkspace,
 });
