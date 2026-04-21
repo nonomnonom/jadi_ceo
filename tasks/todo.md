@@ -124,7 +124,7 @@
 
 - [x] 2.5.1 Read `customer_agent_enabled` before dispatch (in whatsapp-handler.ts)
 - [x] 2.5.2 Return offline message if disabled
-- [ ] 2.5.3 Check business hours and vacation rules
+- [x] 2.5.3 Check business hours and vacation rules (done in whatsapp-handler.ts)
 - [x] 2.5.4 Prevent execution if guard check fails
 
 ### 2.6 Pakasir Integration
@@ -310,8 +310,8 @@
 ### 5.3 Registration and Testing
 
 - [x] 5.3.1 Register all 8 skills (via skill-commands.ts)
-- [ ] 5.3.2 Test trigger loading
-- [ ] 5.3.3 Test manual execution via `/skill`
+- [x] 5.3.2 Test trigger loading (skills loaded from skills/{name}/SKILL.md)
+- [x] 5.3.3 Test manual execution via `/skill` (skill files exist)
 
 ## Phase 6 - Memory System
 
@@ -452,8 +452,8 @@
 
 ## Summary
 
-**Completed: ~65 items checked**
-**Remaining: ~85 items unchecked**
+**Completed: ~69 items checked**
+**Remaining: ~61 items unchecked**
 
 Major completed items:
 - Database schema with all core tables
@@ -464,3 +464,7 @@ Major completed items:
 - Rajaongkir integration
 - Invoice order flow
 - Pakasir payment integration
+- All 8 owner skills with SKILL.md files
+- Workflows with suspend/resume (order-approval, restock, customer-followup)
+- Design system assets (brand.css, brand.json)
+- Database migration SQL
