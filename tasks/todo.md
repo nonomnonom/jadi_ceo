@@ -374,20 +374,20 @@
 
 - [x] 8.1.1 Create `ChannelStatus` (in web)
 - [x] 8.1.2 Create `AgentToggle`
-- [ ] 8.1.3 Create `ConversationsViewer`
-- [ ] 8.1.4 Create `OrdersTable`
+- [x] 8.1.3 Create `ConversationsViewer`
+- [x] 8.1.4 Create `OrdersTable`
 
 ### 8.2 Generated Content Components
 
-- [ ] 8.2.1 Create `DocumentPreview`
-- [ ] 8.2.2 Create `BrandGuidePreview`
+- [x] 8.2.1 Create `DocumentPreview`
+- [x] 8.2.2 Create `BrandGuidePreview`
 - [ ] 8.2.3 Add chart or data preview component if needed
 
 ### 8.3 Supporting API Routes
 
 - [x] 8.3.1 Add `GET /custom/agent-settings`
 - [x] 8.3.2 Add `POST /custom/agent-settings`
-- [ ] 8.3.3 Add `GET /custom/conversations`
+- [x] 8.3.3 Add `GET /custom/conversations`
 - [x] 8.3.4 Add `GET /custom/orders`
 - [x] 8.3.5 Add `GET /custom/dashboard/stats`
 
