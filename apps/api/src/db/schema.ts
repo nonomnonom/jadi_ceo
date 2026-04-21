@@ -72,6 +72,27 @@ const DDL = [
      updated_at   INTEGER NOT NULL,
      PRIMARY KEY (tenant_id, key)
    )`,
+  `CREATE TABLE IF NOT EXISTS scheduled_prompts (
+     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+     tenant_id    TEXT    NOT NULL,
+     prompt       TEXT    NOT NULL,
+     interval_sec INTEGER NOT NULL,
+     cron_expr    TEXT    NOT NULL,
+     next_fire_at INTEGER NOT NULL,
+     active       INTEGER NOT NULL DEFAULT 1,
+     last_fire_at INTEGER,
+     last_result  TEXT,
+     created_at   INTEGER NOT NULL
+   )`,
+  `CREATE TABLE IF NOT EXISTS whatsapp_credentials (
+     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+     tenant_id    TEXT    NOT NULL,
+     device_name  TEXT,
+     auth_state   TEXT    NOT NULL,
+     created_at   INTEGER NOT NULL,
+     updated_at   INTEGER NOT NULL,
+     UNIQUE (tenant_id, device_name)
+   )`,
   `CREATE INDEX IF NOT EXISTS idx_notes_tenant_created
      ON notes (tenant_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_tenant_occurred
@@ -90,6 +111,8 @@ const DDL = [
      ON invoices (tenant_id, paid_at)`,
   `CREATE INDEX IF NOT EXISTS idx_invoices_tenant_due
      ON invoices (tenant_id, due_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_sched_prompts_tenant_active_next
+     ON scheduled_prompts (tenant_id, active, next_fire_at)`,
 ];
 
 export async function initSchema(db: Db): Promise<void> {
