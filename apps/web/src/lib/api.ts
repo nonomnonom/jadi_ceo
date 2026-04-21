@@ -193,3 +193,20 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   if (!res.ok) throw new Error(`dashboard stats: ${res.status}`);
   return (await res.json()) as DashboardStats;
 }
+
+export type RevenueDay = {
+  day: string;
+  dayFormatted: string;
+  incomeIdr: number;
+  incomeFormatted: string;
+  expenseIdr: number;
+  expenseFormatted: string;
+  netIdr: number;
+  netFormatted: string;
+};
+
+export async function getRevenueHistory(): Promise<{ history: RevenueDay[] }> {
+  const res = await fetch('/custom/dashboard/history', { headers: authHeaders() });
+  if (!res.ok) throw new Error(`revenue history: ${res.status}`);
+  return (await res.json()) as { history: RevenueDay[] };
+}

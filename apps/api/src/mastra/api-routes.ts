@@ -697,6 +697,63 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/dashboard/history', {
+    method: 'GET',
+    openapi: {
+      summary: 'Get 7-day income/expense history',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const now = Date.now();
+      const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+      const rows = await db.execute({
+        sql: `SELECT
+                date(occurred_at/1000, 'unixepoch') as day,
+                kind,
+                SUM(amount_idr) as total
+              FROM transactions
+              WHERE tenant_id = ? AND occurred_at >= ?
+              GROUP BY day, kind
+              ORDER BY day ASC`,
+        args: [tenantId, sevenDaysAgo],
+      });
+
+      // Build a map: day -> { income, expense }
+      const byDay: Record<string, { income: number; expense: number }> = {};
+      for (const row of rows.rows) {
+        const day = String(row.day);
+        const total = Number(row.total);
+        if (!byDay[day]) byDay[day] = { income: 0, expense: 0 };
+        if (String(row.kind) === 'income') byDay[day].income = total;
+        else byDay[day].expense = total;
+      }
+
+      // Fill in all 7 days, even if no transactions
+      const result = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now - i * 24 * 60 * 60 * 1000);
+        const dayStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+        const entry = byDay[dayStr] ?? { income: 0, expense: 0 };
+        result.push({
+          day: dayStr,
+          dayFormatted: d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' }),
+          incomeIdr: entry.income,
+          incomeFormatted: `Rp ${entry.income.toLocaleString('id-ID')}`,
+          expenseIdr: entry.expense,
+          expenseFormatted: `Rp ${entry.expense.toLocaleString('id-ID')}`,
+          netIdr: entry.income - entry.expense,
+          netFormatted: `Rp ${(entry.income - entry.expense).toLocaleString('id-ID')}`,
+        });
+      }
+
+      return c.json({ history: result });
+    },
+  }),
+
   registerApiRoute('/custom/payment-simulate', {
     method: 'POST',
     openapi: {

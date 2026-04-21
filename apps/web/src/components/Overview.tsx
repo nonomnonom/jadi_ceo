@@ -11,6 +11,7 @@ import {
   getLowStock,
   getOverdueInvoices,
 } from '../lib/api.ts';
+import { RevenueChart } from './RevenueChart.tsx';
 
 type State = {
   summary: DailySummary | null;
@@ -62,6 +63,7 @@ export function Overview() {
   return (
     <div className="flex flex-col gap-5">
       <StatsGrid summary={s.summary} dashboard={s.dashboard} />
+      <RevenueChart />
       <div className="grid gap-4 md:grid-cols-2">
         <OverdueCard overdue={s.overdue} />
         <LowStockCard lowStock={s.lowStock} />
