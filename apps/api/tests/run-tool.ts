@@ -10,7 +10,11 @@ import type { ValidationError } from '@mastra/core/tools';
 type ExtractSuccess<R> = R extends ValidationError ? never : R;
 
 // biome-ignore lint/suspicious/noExplicitAny: generic tool helper needs structural any
-type ToolLike = { execute?: (input: any, context: any) => Promise<any> };
+type ToolExecFn = (input: any, context: any) => Promise<any>;
+// Explicit `| undefined` so this matches under `exactOptionalPropertyTypes: true`
+// (Mastra's Tool class declares `execute?: Fn` without `| undefined`, so TS views
+// the absence differently under exact-optional).
+type ToolLike = { execute?: ToolExecFn | undefined };
 
 type ToolInput<T extends ToolLike> = NonNullable<T['execute']> extends (
   input: infer I,

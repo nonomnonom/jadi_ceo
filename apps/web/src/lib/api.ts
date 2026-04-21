@@ -1,9 +1,16 @@
 const AGENT_ID = 'juragan';
 
+const SECRET = import.meta.env.VITE_DASHBOARD_SECRET as string | undefined;
+
+function authHeaders(): Record<string, string> {
+  if (!SECRET) return {};
+  return { Authorization: `Bearer ${SECRET}` };
+}
+
 async function executeTool<Out>(toolId: string, input: unknown): Promise<Out> {
   const res = await fetch(`/api/agents/${AGENT_ID}/tools/${toolId}/execute`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ data: input }),
   });
   if (!res.ok) {
@@ -81,13 +88,17 @@ export async function getAgent(): Promise<AgentInfo> {
 type FsEntry = { name: string; path: string; kind: 'file' | 'directory'; size?: number };
 
 export async function listWorkspaceFiles(path = '/'): Promise<{ entries: FsEntry[] }> {
-  const res = await fetch(`/custom/workspace/files?path=${encodeURIComponent(path)}`);
+  const res = await fetch(`/custom/workspace/files?path=${encodeURIComponent(path)}`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`list files: ${res.status} ${await res.text()}`);
   return (await res.json()) as { entries: FsEntry[] };
 }
 
 export async function readWorkspaceFile(path: string): Promise<{ content: string }> {
-  const res = await fetch(`/custom/workspace/file?path=${encodeURIComponent(path)}`);
+  const res = await fetch(`/custom/workspace/file?path=${encodeURIComponent(path)}`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`read file: ${res.status} ${await res.text()}`);
   return (await res.json()) as { content: string };
 }
@@ -103,7 +114,7 @@ export type SettingsStatus = {
 };
 
 export async function getSettings(): Promise<SettingsStatus> {
-  const res = await fetch('/custom/settings');
+  const res = await fetch('/custom/settings', { headers: authHeaders() });
   if (!res.ok) throw new Error(`settings: ${res.status}`);
   return (await res.json()) as SettingsStatus;
 }
@@ -115,7 +126,7 @@ export async function saveSettings(body: {
 }): Promise<{ saved: string[]; restartRequired: boolean }> {
   const res = await fetch('/custom/settings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`save settings: ${res.status} ${await res.text()}`);
@@ -129,7 +140,7 @@ export type TickReminderResult = {
 };
 
 export async function tickReminders(): Promise<TickReminderResult> {
-  const res = await fetch('/custom/reminders/tick', { method: 'POST' });
+  const res = await fetch('/custom/reminders/tick', { method: 'POST', headers: authHeaders() });
   if (!res.ok) throw new Error(`tick reminders: ${res.status}`);
   return (await res.json()) as TickReminderResult;
 }
@@ -143,7 +154,7 @@ export type TelegramTestResult = { ok: true; bot: TelegramBot } | { ok: false; e
 export async function testTelegramToken(token: string): Promise<TelegramTestResult> {
   const res = await fetch('/custom/telegram/test', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ token }),
   });
   return (await res.json()) as TelegramTestResult;
@@ -155,7 +166,7 @@ export type TelegramStatus =
   | { configured: true; botReachable: true; bot: TelegramBot; deepLink: string };
 
 export async function getTelegramStatus(): Promise<TelegramStatus> {
-  const res = await fetch('/custom/telegram/status');
+  const res = await fetch('/custom/telegram/status', { headers: authHeaders() });
   if (!res.ok) throw new Error(`telegram status: ${res.status}`);
   return (await res.json()) as TelegramStatus;
 }

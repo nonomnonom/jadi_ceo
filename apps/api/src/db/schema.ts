@@ -222,7 +222,7 @@ const DDL = [
 export async function initSchema(db: Db): Promise<void> {
   // Enable WAL mode for better concurrent read performance
   await db.execute({ sql: 'PRAGMA journal_mode=WAL', args: [] });
-  await db.execute({ sql: 'PRAGMA busy_timeout=10000', args: [] });
+  await db.execute({ sql: 'PRAGMA busy_timeout=30000', args: [] });
   await db.execute({ sql: 'PRAGMA synchronous=NORMAL', args: [] });
   for (const sql of DDL) {
     await db.execute(sql);

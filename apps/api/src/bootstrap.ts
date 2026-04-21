@@ -1,3 +1,4 @@
+import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { getDb } from './db/client.js';
 import { initSchema } from './db/schema.js';
 import { getSetting } from './db/settings.js';
@@ -7,8 +8,6 @@ import { getSetting } from './db/settings.js';
 // promotion is complete.
 const db = getDb();
 await initSchema(db);
-
-const tenantId = process.env.DEFAULT_TENANT_ID ?? 'default';
 
 if (!process.env.OPENROUTER_API_KEY) {
   const stored = await getSetting(db, tenantId, 'openrouterApiKey');

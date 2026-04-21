@@ -298,7 +298,7 @@ function StatusRow({
   label: string;
   configured: boolean | null;
   masked: string | null;
-  hint?: string;
+  hint?: string | undefined;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -335,7 +335,7 @@ function Field({
   type,
 }: {
   label: string;
-  hint?: string;
+  hint?: string | undefined;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;

@@ -8,13 +8,16 @@
       "outputs": [".mastra/**", "dist/**", "!.mastra/cache/**"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
+      "inputs": ["src/**", "tests/**", "biome.json", "../../biome.json"]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^check-types"],
+      "inputs": ["src/**", "tests/**", "tsconfig.json", "../../tsconfig.base.json"]
     },
     "dev": {
       "cache": false,

@@ -2,6 +2,8 @@
   "name": "juragan",
   "private": true,
   "scripts": {
+    "setup": "pnpm install && node -e \"require('fs').existsSync('.env')||require('fs').copyFileSync('.env.example','.env')\" && docker compose up -d redis",
+    "start": "turbo run dev",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "test": "turbo run test",
@@ -15,7 +17,7 @@
     "typescript": "5.9.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "packageManager": "pnpm@10.33.0"
 }

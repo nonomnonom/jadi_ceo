@@ -3,6 +3,7 @@ import { Redis, type RedisOptions } from 'ioredis';
 
 export const QUEUE_NAMES = {
   REMINDER_FIRE: 'reminder-fire',
+  SCHEDULED_PROMPT_FIRE: 'scheduled-prompt-fire',
 } as const;
 
 export type ReminderFireJob = {
@@ -10,8 +11,14 @@ export type ReminderFireJob = {
   reminderId: number;
 };
 
+export type ScheduledPromptFireJob = {
+  tenantId: string;
+  scheduledPromptId: number;
+};
+
 export type QueueJobMap = {
   [QUEUE_NAMES.REMINDER_FIRE]: ReminderFireJob;
+  [QUEUE_NAMES.SCHEDULED_PROMPT_FIRE]: ScheduledPromptFireJob;
 };
 
 export const DEFAULT_REDIS_URL = 'redis://localhost:6379';
@@ -51,8 +58,14 @@ export function reminderJobId(tenantId: string, reminderId: number): string {
   return `reminder:${tenantId}:${reminderId}`;
 }
 
+export function scheduledPromptJobId(tenantId: string, scheduledPromptId: number): string {
+  return `sched-prompt:${tenantId}:${scheduledPromptId}`;
+}
+
 let _reminderQueue: Queue<ReminderFireJob> | null = null;
+let _scheduledPromptQueue: Queue<ScheduledPromptFireJob> | null = null;
 let _reminderConnection: Redis | null = null;
+let _scheduledPromptConnection: Redis | null = null;
 
 /**
  * Lazily construct the reminder-fire queue the API uses as a producer.
@@ -82,4 +95,28 @@ export async function closeReminderQueue(): Promise<void> {
     await _reminderConnection.quit().catch(() => {});
     _reminderConnection = null;
   }
+  if (_scheduledPromptQueue) {
+    await _scheduledPromptQueue.close();
+    _scheduledPromptQueue = null;
+  }
+  if (_scheduledPromptConnection) {
+    await _scheduledPromptConnection.quit().catch(() => {});
+    _scheduledPromptConnection = null;
+  }
+}
+
+/**
+ * Lazily construct the scheduled-prompt-fire queue. Returns null if REDIS_URL is blank.
+ */
+export function getScheduledPromptQueue(): Queue<ScheduledPromptFireJob> | null {
+  if (_scheduledPromptQueue) return _scheduledPromptQueue;
+  const url = process.env.REDIS_URL ?? DEFAULT_REDIS_URL;
+  if (!url) return null;
+  _scheduledPromptConnection = createRedisConnection(url);
+  _scheduledPromptQueue = new Queue<ScheduledPromptFireJob>(
+    QUEUE_NAMES.SCHEDULED_PROMPT_FIRE,
+    makeQueueOptions(_scheduledPromptConnection),
+  );
+  _scheduledPromptConnection.on('error', () => {});
+  return _scheduledPromptQueue;
 }

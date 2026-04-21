@@ -3,7 +3,12 @@ import { z } from 'zod';
 export const TenantIdSchema = z.string().min(1).brand<'TenantId'>();
 export type TenantId = z.infer<typeof TenantIdSchema>;
 
-export const DEFAULT_TENANT_ID = 'default' as TenantId;
+/**
+ * Single source of truth for the default tenant id in single-tenant mode.
+ * Phase 3 replaces this with an AsyncLocalStorage-backed accessor, so consumers
+ * importing from here will not need code changes when multi-tenant lands.
+ */
+export const DEFAULT_TENANT_ID: string = process.env.DEFAULT_TENANT_ID ?? 'default';
 
 export type Role = 'owner' | 'customer';
 export type Channel = 'telegram' | 'whatsapp';

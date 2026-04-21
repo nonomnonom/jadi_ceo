@@ -1,4 +1,5 @@
 import { createTelegramAdapter } from '@chat-adapter/telegram';
+import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { getDb } from '../../db/client.js';
@@ -7,16 +8,20 @@ import { createInvoiceTools } from '../tools/invoices.js';
 import { createNoteTools } from '../tools/notes.js';
 import { createProductTools } from '../tools/products.js';
 import { createReminderTools } from '../tools/reminders.js';
+import { createScheduledPromptTools } from '../tools/scheduled-prompts.js';
 import { getCurrentTime } from '../tools/time.js';
 import { createTransactionTools } from '../tools/transactions.js';
 import { createOwnerWorkspace } from '../workspace.js';
 
-const tenantId = process.env.DEFAULT_TENANT_ID ?? 'default';
 const db = getDb();
 
 const { addNote, listNotes } = createNoteTools({ db, tenantId });
 const { logTransaction, getDailySummary } = createTransactionTools({ db, tenantId });
 const { setReminder, listReminders } = createReminderTools({ db, tenantId });
+const { schedulePrompt, listScheduledPrompts, cancelScheduledPrompt } = createScheduledPromptTools({
+  db,
+  tenantId,
+});
 const { addProduct, listProducts, adjustStock } = createProductTools({ db, tenantId });
 const { addContact, listContacts } = createContactTools({ db, tenantId });
 const { createInvoice, listInvoices, markInvoicePaid } = createInvoiceTools({ db, tenantId });
@@ -62,6 +67,16 @@ Kalau ada skill yang match, panggil \`skill\` dengan name-nya SEBELUM menjawab �
 - "Stok apa yang mau habis": \`list-products\` lowStockOnly: true.
 - "Siapa belum bayar": \`list-invoices\` (default tampilkan belum lunas).
 
+## Scheduled automation
+Owner bisa schedule prompt supaya jalan otomatis pada interval. Contoh:
+- "setiap 5 menit cek invoice overdue" → \`schedule-prompt\` (prompt: "cek semua invoice overdue", interval: "5m")
+- "setiap pagi jam 9 laporan harian" → \`schedule-prompt\` (prompt: "ringkasan harian", interval: "9am")
+- "every monday 9am ringkasan minggu ini" → \`schedule-prompt\` (interval: "every monday 9am")
+
+Gunakan \`schedule-prompt\` dengan prompt yang jelas dan interval yang spesifik.
+Untuk lihat semua scheduled prompt → \`list-scheduled-prompts\`.
+Untuk batalkan → \`cancel-scheduled-prompt\` dengan ID.
+
 ## Aturan interaksi
 - Waktu: JANGAN PERNAH tebak. Selalu \`get-current-time\` dulu.
 - Rupiah: pakai \`amountFormatted\` / \`priceFormatted\` dari tool, jangan format ulang.
@@ -72,7 +87,7 @@ Kalau ada skill yang match, panggil \`skill\` dengan name-nya SEBELUM menjawab �
 ## Jangan lakukan
 - Jangan karang angka finansial, harga, atau stok.
 - Jangan simpan password/PIN/OTP/nomor kartu di note/contact/file.
-- Jangan klaim pengingat otomatis kirim notifikasi — di versi ini hanya tersimpan.
+- Pengingat otomatis dikirim via Telegram saat jatuh tempo. Konfirmasi ke owner jam WIB nya (contoh: "oke, besok jam 9 WIB ya"). JANGAN bilang "cuma disimpan".
 - Jangan set stok absolut via \`adjust-stock\` — selalu delta.
 - Jangan \`mark-invoice-paid\` dua kali untuk invoice yang sama.
 - Jangan overwrite file workspace tanpa baca dulu (tool akan block, owner approval juga diperlukan).
@@ -92,6 +107,9 @@ export const juraganAgent = new Agent({
     getDailySummary,
     setReminder,
     listReminders,
+    schedulePrompt,
+    listScheduledPrompts,
+    cancelScheduledPrompt,
     getCurrentTime,
     addProduct,
     listProducts,

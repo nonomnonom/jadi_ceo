@@ -1,0 +1,92 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: juragan-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    image: node:20-alpine
+    container_name: juragan-api
+    restart: unless-stopped
+    ports:
+      - '4111:4111'
+    working_dir: /app
+    volumes:
+      - ./apps/api:/app
+      - ./node_modules:/app/node_modules
+      - ./packages:/app/packages
+    environment:
+      NODE_ENV: production
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID}
+      DATABASE_URL: ${DATABASE_URL:-file:./data/juragan.db}
+      REDIS_URL: redis://redis:6379
+      DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-default}
+      DASHBOARD_SECRET: ${DASHBOARD_SECRET}
+      PORT: 4111
+    volumes_from:
+      - api-data:/app/apps/api/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4111/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    image: oven/bun:1-alpine
+    container_name: juragan-worker
+    restart: unless-stopped
+    working_dir: /app/apps/worker
+    volumes:
+      - ./apps/worker:/app
+      - ./packages:/app/packages
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID}
+      DATABASE_URL: ${DATABASE_URL:-file:../api/data/juragan.db}
+      DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-default}
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    entrypoint: ['bun', 'src/index.ts']
+
+  web:
+    image: nginx:alpine
+    container_name: juragan-web
+    restart: unless-stopped
+    ports:
+      - '5173:80'
+    volumes:
+      - ./apps/web/dist:/usr/share/nginx/html:ro
+    depends_on:
+      - api
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost/']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis-data:
+  api-data:
