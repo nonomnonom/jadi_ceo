@@ -43,5 +43,8 @@ for (const plugin of discovered) {
   }
 }
 
+// Auto-discover built-in skills from the skills/ directory
+await manager.discoverSkills(join(process.cwd(), 'skills'));
+
 // Start the dreaming scheduler for memory consolidation
 const _stopDreamScheduler = startDreamScheduler({ db, tenantId });

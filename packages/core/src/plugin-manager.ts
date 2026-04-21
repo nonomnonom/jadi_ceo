@@ -10,10 +10,7 @@ import type {
   SkillManifest,
   PluginManifest,
 } from '@juragan/plugin-sdk';
-import {
-  PluginManifestSchema,
-  definePluginEntry,
-} from '@juragan/plugin-sdk';
+import { PluginManifestSchema, definePluginEntry } from '@juragan/plugin-sdk';
 
 export interface DiscoveredPlugin {
   manifest: PluginManifest;
@@ -78,7 +75,6 @@ class PluginManagerImpl {
           const parsed = JSON.parse(content);
           manifest = PluginManifestSchema.parse(parsed);
         } catch {
-          // Not a plugin directory — recurse if it looks like a plugins dir
           if (entry.name === 'plugins' || entry.name === 'node_modules') {
             await this.scanDirectory(join(dir, entry.name), discovered, depth + 1);
           }
@@ -90,7 +86,7 @@ class PluginManagerImpl {
         });
       }
     } catch {
-      // Directory doesn't exist or can't be read — skip
+      // Directory doesn't exist
     }
   }
 
@@ -126,9 +122,8 @@ class PluginManagerImpl {
       await instance.dispose();
     }
     this.plugins.delete(id);
-    // Remove its registered components
-    this.channels = this.channels.filter((c) => c.id.startsWith(`${id}:`));
-    this.providers = this.providers.filter((p) => p.id.startsWith(`${id}:`));
+    this.channels = this.channels.filter((c) => !c.id.startsWith(`${id}:`));
+    this.providers = this.providers.filter((p) => !p.id.startsWith(`${id}:`));
     this.tools = this.tools.filter((t) => !t.id.startsWith(`${id}:`));
     this.skills = this.skills.filter((s) => !s.id.startsWith(`${id}:`));
   }
@@ -146,6 +141,32 @@ class PluginManagerImpl {
   }
 
   getSkills(): SkillManifest[] {
+    return [...this.skills];
+  }
+
+  /** Discover skills from the skills/ directory (auto-loaded built-in skills). */
+  async discoverSkills(skillsDir: string): Promise<SkillManifest[]> {
+    try {
+      const entries = await fs.readdir(skillsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const skillPath = join(skillsDir, entry.name, 'SKILL.md');
+        try {
+          const content = await fs.readFile(skillPath, 'utf-8');
+          const manifest = parseSkillFrontmatter(content);
+          if (manifest) {
+            // Avoid duplicates if skill was registered via plugin
+            if (!this.skills.some((s) => s.id === manifest.id)) {
+              this.skills.push(manifest);
+            }
+          }
+        } catch {
+          // Skill without SKILL.md or unreadable — skip
+        }
+      }
+    } catch {
+      // skills dir doesn't exist
+    }
     return [...this.skills];
   }
 
@@ -198,6 +219,44 @@ class PluginManagerImpl {
       },
     };
   }
+}
+
+/**
+ * Parse YAML frontmatter from a SKILL.md file into a SkillManifest.
+ */
+function parseSkillFrontmatter(content: string): SkillManifest | null {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n/);
+  if (!match) return null;
+
+  const raw: Record<string, unknown> = {};
+  for (const line of match[1]!.split('\n')) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+    const key = line.slice(0, colonIdx).trim();
+    const val = line.slice(colonIdx + 1).trim();
+    if (val.startsWith('[') && val.endsWith(']')) {
+      // Parse inline array: "  - item1\n  - item2"
+      raw[key] = val
+        .slice(1, -1)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else {
+      raw[key] = val;
+    }
+  }
+
+  if (!raw.name || !raw.description) return null;
+
+  return {
+    id: String(raw.name).replace(/\s+/g, '-').toLowerCase(),
+    name: String(raw.name),
+    description: String(raw.description),
+    emoji: raw.emoji ? String(raw.emoji) : undefined,
+    tools: Array.isArray(raw.tools) ? raw.tools.map(String) : [],
+    triggers: Array.isArray(raw.triggers) ? raw.triggers.map(String) : [],
+    instructions: content.replace(/^---[\s\S]*?---\n/, '').trim(),
+  };
 }
 
 let _manager: PluginManagerImpl | null = null;
