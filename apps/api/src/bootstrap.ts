@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { getDb } from './db/client.js';
 import { initSchema } from './db/schema.js';
+import { initAcpSchema, getAcpSessionManager } from '@juragan/core';
 import { getSetting } from './db/settings.js';
 import { startDreamScheduler } from './scheduler/dream-scheduler.js';
 import { getPluginManager } from '@juragan/core';
@@ -11,6 +12,8 @@ import { getPluginManager } from '@juragan/core';
 // promotion is complete.
 const db = getDb();
 await initSchema(db);
+await initAcpSchema(db);
+getAcpSessionManager().setDb(db);
 
 if (!process.env.OPENROUTER_API_KEY) {
   const stored = await getSetting(db, tenantId, 'openrouterApiKey');
