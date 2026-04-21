@@ -21,6 +21,7 @@ export const mastra = new Mastra({
   workflows: {},
   bundler: {
     transpilePackages: ['@juragan/shared'],
+    externals: ['baileys', '@juragan/queue', 'msgpackr-extract'],
   },
   server: {
     apiRoutes,
