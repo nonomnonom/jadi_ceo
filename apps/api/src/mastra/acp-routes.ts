@@ -40,8 +40,15 @@ export function registerAcpRoutes() {
 
   registerApiRoute('/acp/sessions/:key/close', {
     method: 'POST',
-    handler: async () => {
-      return Response.json({ error: 'not implemented' }, { status: 501 });
+    handler: async (): Promise<Response> => {
+      const url = new URL('', 'http://localhost');
+      const key = url.pathname.split('/').pop() ?? '';
+      const manager = getAcpSessionManager();
+      const cached = manager.getCachedSession(key);
+      if (cached) {
+        await manager.closeSession(cached);
+      }
+      return Response.json({ ok: true, sessionKey: key });
     },
   });
 }
