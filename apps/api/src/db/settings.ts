@@ -4,7 +4,9 @@ export type SettingKey =
   | 'openrouterApiKey'
   | 'telegramBotToken'
   | 'telegramOwnerChatId'
-  | 'whatsappAutoReply';
+  | 'whatsappAutoReply'
+  | 'pakasirProject'
+  | 'pakasirApiKey';
 
 export async function getSetting(
   db: Db,
