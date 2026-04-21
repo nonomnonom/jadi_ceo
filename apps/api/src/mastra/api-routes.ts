@@ -641,6 +641,62 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/dashboard/stats', {
+    method: 'GET',
+    openapi: {
+      summary: 'Get dashboard statistics for the current tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+
+      const [ordersRow, revenueRow, conversationsRow] = await Promise.all([
+        db.execute({
+          sql: `SELECT status, COUNT(*) as cnt FROM orders WHERE tenant_id = ? GROUP BY status`,
+          args: [tenantId],
+        }),
+        db.execute({
+          sql: `SELECT COALESCE(SUM(total_idr), 0) as total FROM orders WHERE tenant_id = ? AND payment_status = 'paid'`,
+          args: [tenantId],
+        }),
+        db.execute({
+          sql: `SELECT COUNT(*) as cnt FROM conversations WHERE tenant_id = ?`,
+          args: [tenantId],
+        }),
+      ]);
+
+      const ordersByStatus: Record<string, number> = {};
+      let totalOrders = 0;
+      for (const row of ordersRow.rows) {
+        const cnt = Number(row.cnt);
+        ordersByStatus[String(row.status)] = cnt;
+        totalOrders += cnt;
+      }
+
+      const recentOrdersRow = await db.execute({
+        sql: `SELECT id, customer_phone, total_idr, status, payment_status, created_at
+              FROM orders WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 5`,
+        args: [tenantId],
+      });
+
+      return c.json({
+        totalOrders,
+        ordersByStatus,
+        totalRevenueIdr: Number(revenueRow.rows[0]?.total ?? 0),
+        totalConversations: Number(conversationsRow.rows[0]?.cnt ?? 0),
+        recentOrders: recentOrdersRow.rows.map((r) => ({
+          id: Number(r.id),
+          customerPhone: String(r.customer_phone),
+          totalIdr: Number(r.total_idr),
+          status: String(r.status),
+          paymentStatus: String(r.payment_status),
+          createdAt: Number(r.created_at),
+        })),
+      });
+    },
+  }),
   registerApiRoute('/custom/payment-simulate', {
     method: 'POST',
     openapi: {
