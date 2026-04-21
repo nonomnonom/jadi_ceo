@@ -108,15 +108,22 @@ export const juraganAgent = new Agent({
       lastMessages: 20,
     },
   }),
-  // Polling mode so local dev works without a public webhook URL. The adapter
-  // long-polls Telegram directly and reads TELEGRAM_BOT_TOKEN from env on
-  // construction. If no token is set, channels stay off and the agent is still
-  // usable via Studio + the REST API.
+  // Auto mode: adapter uses webhooks when deployed serverless (Vercel/CF Workers),
+  // falls back to polling on long-running Node (Docker/VPS/local dev). Reads
+  // TELEGRAM_BOT_TOKEN from env on construction — bootstrap.ts promotes the
+  // DB-saved value there before this module evaluates. If no token is set,
+  // channels stay off and the agent is still usable via Studio + REST.
+  // dropPendingUpdates avoids replaying queued messages on restart.
   ...(process.env.TELEGRAM_BOT_TOKEN
     ? {
         channels: {
           adapters: {
-            telegram: createTelegramAdapter({ mode: 'polling' as const }),
+            telegram: createTelegramAdapter({
+              mode: 'auto' as const,
+              longPolling: {
+                dropPendingUpdates: true,
+              },
+            }),
           },
         },
       }
