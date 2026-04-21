@@ -1,3 +1,4 @@
+import { createWhatsAppHandler } from './whatsapp-handler.js';
 import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { type WASocket, makeWASocket, useMultiFileAuthState } from 'baileys';
 
@@ -49,6 +50,9 @@ class WhatsAppManager {
         this.latestQR = qr;
       }
     });
+
+    // Wire up WhatsApp → customer agent handler
+    createWhatsAppHandler(this.sock);
   }
 
   async disconnect(): Promise<void> {
