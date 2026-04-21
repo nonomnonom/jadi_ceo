@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
 import { getSetting, setSetting } from '../../../db/settings.js';
+import { getAcpSessionManager } from '@juragan/core';
 
 export type AgentCtlDeps = { db: Db; tenantId: string };
 
@@ -135,10 +136,37 @@ export function createAgentCtlTools({ db, tenantId }: AgentCtlDeps) {
     },
   });
 
+  const listAcpSessions = createTool({
+    id: 'list-acp-sessions',
+    description:
+      'Lihat daftar ACP session yang aktif atau baru saja aktif. Gunakan untuk debugging multi-agent.',
+    inputSchema: z.object({
+      limit: z.number().int().min(1).max(100).default(20).optional(),
+    }),
+    outputSchema: z.object({
+      sessions: z.array(
+        z.object({
+          sessionKey: z.string(),
+          agentId: z.string(),
+          threadType: z.string(),
+          status: z.string(),
+          createdAt: z.number(),
+          updatedAt: z.number(),
+        }),
+      ),
+    }),
+    execute: async ({ limit }) => {
+      const manager = getAcpSessionManager();
+      const sessions = await manager.listSessions(tenantId, limit ?? 20);
+      return { sessions };
+    },
+  });
+
   return {
     getCustomerAgentStatus,
     enableCustomerAgent,
     disableCustomerAgent,
     listRecentConversations,
+    listAcpSessions,
   };
 }

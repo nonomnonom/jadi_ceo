@@ -62,6 +62,7 @@ const {
   enableCustomerAgent,
   disableCustomerAgent,
   listRecentConversations,
+  listAcpSessions,
 } = createAgentCtlTools({ db, tenantId });
 const { getCurrentModel, switchModel, listSupportedModels } = createModelCommandTools({
   db,
@@ -107,6 +108,7 @@ Gunakan tool yang sesuai saat owner mengetik perintah:
 - "/customer-agent enable" → panggil enable-customer-agent
 - "/customer-agent disable" → panggil disable-customer-agent
 - "/customer-agent view-all" → panggil list-recent-conversations
+- "/customer-agent sessions" → panggil list-acp-sessions
 
 ### /model - Model AI
 - "/model" (tanpa argumen) → panggil get-current-model
@@ -223,6 +225,7 @@ export const ownerSupervisor = new Agent({
     enableCustomerAgent,
     disableCustomerAgent,
     listRecentConversations,
+    listAcpSessions,
     // Model commands
     getCurrentModel,
     switchModel,
