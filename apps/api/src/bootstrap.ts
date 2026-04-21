@@ -26,4 +26,4 @@ if (!process.env.TELEGRAM_OWNER_CHAT_ID) {
 }
 
 // Start the dreaming scheduler for memory consolidation
-const stopDreamScheduler = startDreamScheduler({ db, tenantId });
+const _stopDreamScheduler = startDreamScheduler({ db, tenantId });

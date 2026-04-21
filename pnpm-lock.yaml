@@ -138,6 +138,25 @@ importers:
         specifier: ^4.0.0
         version: 4.1.4(@types/node@20.19.39)(vite@7.3.2(@types/node@20.19.39)(jiti@2.6.1)(lightningcss@1.32.0)(yaml@2.8.3))
 
+  packages/core:
+    dependencies:
+      '@juragan/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.4
+        version: 1.9.4
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.39
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   packages/plugin-sdk:
     dependencies:
       zod:

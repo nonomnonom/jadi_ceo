@@ -14,7 +14,7 @@ function renderCSSPreview(css: string): string {
   let match;
 
   while ((match = varRegex.exec(css)) !== null) {
-    variables.push({ name: match[1], value: match[2].trim() });
+    variables.push({ name: match[1]!, value: match[2]!.trim() });
   }
 
   return variables
@@ -47,7 +47,7 @@ export function BrandGuidePreview() {
       .then((d: { assets: BrandAsset[] }) => {
         setAssets(d.assets);
         if (d.assets.length > 0) {
-          setSelectedAsset(d.assets[0]);
+          setSelectedAsset(d.assets[0] ?? null);
         }
         setLoading(false);
       })

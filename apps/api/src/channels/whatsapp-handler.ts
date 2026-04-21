@@ -1,4 +1,4 @@
-import { type WASocket, proto } from 'baileys';
+import { type WASocket } from 'baileys';
 import { customerAgent } from '../mastra/agents/customer/index.js';
 import { getDb } from '../db/client.js';
 import { DEFAULT_TENANT_ID } from '@juragan/shared';
@@ -22,7 +22,7 @@ function extractQrImage(text: string): { caption: string; imageData: string } | 
   return { caption, imageData };
 }
 
-function formatIDR(n: number): string {
+function _formatIDR(n: number): string {
   return `Rp ${n.toLocaleString('id-ID', { minimumFractionDigits: 0 })}`;
 }
 
