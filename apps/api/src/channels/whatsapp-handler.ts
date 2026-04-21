@@ -1,4 +1,4 @@
-import { type WASocket } from 'baileys';
+import { type WASocket, proto } from 'baileys';
 import { customerAgent } from '../mastra/agents/customer/index.js';
 import { getDb } from '../db/client.js';
 import { DEFAULT_TENANT_ID } from '@juragan/shared';
@@ -9,6 +9,21 @@ import { createTelegramSender } from '../reminders/executor.js';
 const db = getDb();
 const logConversation = createLogConversationTool({ db, tenantId: DEFAULT_TENANT_ID });
 const { isAutoReplyEnabled } = createWhatsAppAutoReplySetting({ db, tenantId: DEFAULT_TENANT_ID });
+
+const QR_IMAGE_PREFIX = '[QR_IMAGE]data:image/png;base64,';
+
+function extractQrImage(text: string): { caption: string; imageData: string } | null {
+  const marker = QR_IMAGE_PREFIX;
+  const idx = text.indexOf(marker);
+  if (idx === -1) return null;
+  const imageData = text.slice(idx + marker.length);
+  const caption = text.slice(0, idx).trim();
+  return { caption, imageData };
+}
+
+function formatIDR(n: number): string {
+  return `Rp ${n.toLocaleString('id-ID', { minimumFractionDigits: 0 })}`;
+}
 
 export function createWhatsAppHandler(sock: WASocket): void {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
@@ -72,6 +87,20 @@ export function createWhatsAppHandler(sock: WASocket): void {
 
       const replyText = typeof response.text === 'string' ? response.text : JSON.stringify(response.text);
 
+      // Check for QR image data in agent response
+      const qrData = extractQrImage(replyText);
+      if (qrData) {
+        // Send as WhatsApp image (base64 PNG)
+        const buffer = Buffer.from(qrData.imageData, 'base64');
+        await sock.sendMessage(senderJid, {
+          image: buffer,
+          caption: qrData.caption || undefined,
+        });
+      } else {
+        // Send as regular text reply
+        await sock.sendMessage(senderJid, { text: replyText });
+      }
+
       // Log outbound
       await logConversation.execute({
         channel: 'whatsapp',
@@ -80,9 +109,6 @@ export function createWhatsAppHandler(sock: WASocket): void {
         message: replyText,
         messageId: undefined,
       });
-
-      // Send reply via WhatsApp
-      await sock.sendMessage(senderJid, { text: replyText });
     }
   });
 }
