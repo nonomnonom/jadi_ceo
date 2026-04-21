@@ -72,6 +72,7 @@ export const SpawnParamsSchema = z.object({
   threadType: z.enum(['current', 'child']).default('child'),
   streamTo: z.string().optional(),
   tenantId: z.string().min(1).optional(),
+  parentSessionKey: z.string().optional(),
 });
 export type SpawnParams = z.infer<typeof SpawnParamsSchema>;
 
@@ -333,7 +334,12 @@ class AcpSessionManager {
   async listSessions(tenantId: string, limit = 50): Promise<unknown[]> {
     if (!this.db) return [];
     const { listAcpSessionsByTenant } = await import('./session-persistence.js');
-    return listAcpSessionsByTenant(this.db, tenantId, { limit });
+    const sessions = await listAcpSessionsByTenant(
+      this.db as Parameters<typeof listAcpSessionsByTenant>[0],
+      tenantId,
+      { limit },
+    );
+    return sessions as unknown[];
   }
 
   /** Reset for testing — not for production use */

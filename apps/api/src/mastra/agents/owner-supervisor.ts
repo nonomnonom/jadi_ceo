@@ -64,6 +64,8 @@ const {
   listRecentConversations,
   listAcpSessions,
   spawnSubAgent,
+  completeTask,
+  failTask,
 } = createAgentCtlTools({ db, tenantId });
 const { getCurrentModel, switchModel, listSupportedModels } = createModelCommandTools({
   db,
@@ -113,6 +115,10 @@ Gunakan tool yang sesuai saat owner mengetik perintah:
 
 ### /spawn - Spawn Sub-Agent
 - "/spawn [task]" → panggil spawn-sub-agent untuk jalankan task di background
+
+### Task Lifecycle
+- "/task complete [id]" → panggil complete-task setelah sub-agent selesai
+- "/task fail [id]" → panggil fail-task jika sub-agent error
 
 ### /model - Model AI
 - "/model" (tanpa argumen) → panggil get-current-model
@@ -231,6 +237,8 @@ export const ownerSupervisor = new Agent({
     listRecentConversations,
     listAcpSessions,
     spawnSubAgent,
+    completeTask,
+    failTask,
     // Model commands
     getCurrentModel,
     switchModel,

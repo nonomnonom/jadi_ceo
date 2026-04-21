@@ -158,7 +158,7 @@ export function createAgentCtlTools({ db, tenantId }: AgentCtlDeps) {
     execute: async ({ limit }) => {
       const manager = getAcpSessionManager();
       const sessions = await manager.listSessions(tenantId, limit ?? 20);
-      return { sessions };
+      return { sessions: sessions as Array<{ sessionKey: string; agentId: string; threadType: string; status: string; createdAt: number; updatedAt: number }> };
     },
   });
 
@@ -175,15 +175,51 @@ export function createAgentCtlTools({ db, tenantId }: AgentCtlDeps) {
       status: z.string(),
       childSessionKey: z.string(),
       runId: z.string().optional(),
+      taskId: z.string().optional(),
       error: z.string().optional(),
     }),
     execute: async ({ task, label, agentId }) => {
-      const { spawnAcpDirect } = await import('@juragan/core');
+      const { spawnAcpDirect, getAcpSessionManager } = await import('@juragan/core');
       const result = await spawnAcpDirect(
-        { task, label, agentId, threadType: 'child' },
+        { task, label, agentId, threadType: 'child', tenantId },
         tenantId,
       );
-      return result;
+      // Find the task that was created
+      const runs = getAcpSessionManager().getRunningTaskRuns(tenantId);
+      const created = runs.find((r) => r.sessionKey === result.childSessionKey);
+      return { ...result, taskId: created?.id };
+    },
+  });
+
+  const completeTask = createTool({
+    id: 'complete-task',
+    description:
+      'Mark a detached task run as completed. Use after a spawned sub-agent finishes its work.',
+    inputSchema: z.object({
+      taskId: z.string().describe('The task ID to mark as done'),
+      result: z.unknown().optional().describe('Optional result data to attach'),
+    }),
+    outputSchema: z.object({ ok: z.boolean() }),
+    execute: async ({ taskId, result }) => {
+      const manager = getAcpSessionManager();
+      manager.completeTaskRun(taskId, result);
+      return { ok: true };
+    },
+  });
+
+  const failTask = createTool({
+    id: 'fail-task',
+    description:
+      'Mark a detached task run as failed. Use when a spawned sub-agent encounters an unrecoverable error.',
+    inputSchema: z.object({
+      taskId: z.string().describe('The task ID to mark as failed'),
+      error: z.string().optional().describe('Optional error message'),
+    }),
+    outputSchema: z.object({ ok: z.boolean() }),
+    execute: async ({ taskId, error }) => {
+      const manager = getAcpSessionManager();
+      manager.failTaskRun(taskId, error);
+      return { ok: true };
     },
   });
 
@@ -194,5 +230,7 @@ export function createAgentCtlTools({ db, tenantId }: AgentCtlDeps) {
     listRecentConversations,
     listAcpSessions,
     spawnSubAgent,
+    completeTask,
+    failTask,
   };
 }
