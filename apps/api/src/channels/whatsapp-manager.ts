@@ -58,7 +58,6 @@ class WhatsAppManager {
     this.sock = makeWASocket({
       auth: state,
       printQRInTerminal: false,
-      logger: console,
     });
 
     this.sock.ev.on('creds.update', saveCreds);
@@ -139,7 +138,8 @@ class WhatsAppManager {
 
   async sendMessageToJid(
     jid: string,
-    content: { text?: string; image?: Buffer; caption?: string },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content: any,
   ): Promise<void> {
     if (!this.sock) return;
     await this.sock.sendMessage(jid, content);

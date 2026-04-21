@@ -548,21 +548,30 @@ export const apiRoutes = [
       const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 200);
       const offset = parseInt(c.req.query('offset') ?? '0', 10);
       const db = getDb();
+
+      // Group conversations by customer_phone to get unique conversations
       const result = await db.execute({
-        sql: `SELECT id, channel, customer_phone, customer_name, last_message_at, created_at
+        sql: `SELECT
+                MAX(id) as id,
+                channel,
+                customer_phone,
+                MAX(created_at) as last_message_at,
+                created_at
               FROM conversations
               WHERE tenant_id = ?
+              GROUP BY tenant_id, customer_phone
               ORDER BY last_message_at DESC
               LIMIT ? OFFSET ?`,
         args: [tenantId, limit, offset],
       });
+
       return c.json({
         conversations: result.rows.map((r) => ({
           id: Number(r.id),
           channel: String(r.channel),
           customerPhone: String(r.customer_phone),
-          customerName: r.customer_name ? String(r.customer_name) : null,
-          lastMessageAt: r.last_message_at != null ? Number(r.last_message_at) : null,
+          customerName: null,
+          lastMessageAt: Number(r.last_message_at),
           createdAt: Number(r.created_at),
         })),
         total: result.rows.length,
@@ -583,8 +592,8 @@ export const apiRoutes = [
       const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 200);
       const db = getDb();
       const result = await db.execute({
-        sql: `SELECT id, channel, direction, content, created_at
-              FROM messages
+        sql: `SELECT id, channel, direction, message, created_at
+              FROM conversations
               WHERE tenant_id = ? AND customer_phone = ?
               ORDER BY created_at ASC
               LIMIT ?`,
@@ -594,8 +603,8 @@ export const apiRoutes = [
         messages: result.rows.map((r) => ({
           id: Number(r.id),
           channel: String(r.channel),
-          direction: String(r.direction),
-          content: String(r.content),
+          direction: String(r.direction) === 'inbound' ? 'incoming' : 'outgoing',
+          content: String(r.message),
           createdAt: Number(r.created_at),
         })),
       });
@@ -613,7 +622,7 @@ export const apiRoutes = [
       const status = c.req.query('status');
       const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 200);
       const db = getDb();
-      let sql = `SELECT o.id, o.customer_phone, o.customer_name, o.amount_idr, o.status,
+      let sql = `SELECT o.id, o.customer_phone, o.total_idr, o.status,
                        o.payment_status, o.created_at, o.updated_at,
                        c.name as contact_name
                 FROM orders o
@@ -631,8 +640,8 @@ export const apiRoutes = [
         orders: result.rows.map((r) => ({
           id: Number(r.id),
           customerPhone: String(r.customer_phone),
-          customerName: r.customer_name ? String(r.customer_name) : r.contact_name ?? null,
-          amountIdr: Number(r.amount_idr),
+          customerName: r.contact_name ? String(r.contact_name) : null,
+          amountIdr: Number(r.total_idr),
           status: String(r.status),
           paymentStatus: String(r.payment_status),
           createdAt: Number(r.created_at),
