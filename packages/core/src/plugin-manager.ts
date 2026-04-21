@@ -274,6 +274,7 @@ class PluginManagerImpl {
         self.providers.push(provider);
       },
       registerTool(tool: ToolDefinition) {
+        validateToolDefinition(tool);
         self.tools.push(tool);
       },
       registerCommand(def) {
@@ -348,6 +349,28 @@ function parseSkillFrontmatter(content: string): SkillManifest | null {
     triggers: Array.isArray(raw.triggers) ? raw.triggers.map(String) : [],
     instructions: content.replace(/^---[\s\S]*?---\n/, '').trim(),
   };
+}
+
+/**
+ * Validate a ToolDefinition at registration time.
+ * Throws if the tool definition is malformed.
+ */
+function validateToolDefinition(tool: ToolDefinition): void {
+  if (!tool.id || typeof tool.id !== 'string' || !tool.id.trim()) {
+    throw new Error(`[plugin-manager] Tool has invalid or missing id: ${tool.id}`);
+  }
+  if (!tool.name || typeof tool.name !== 'string' || !tool.name.trim()) {
+    throw new Error(`[plugin-manager] Tool "${tool.id}" has invalid or missing name`);
+  }
+  if (!tool.description || typeof tool.description !== 'string') {
+    throw new Error(`[plugin-manager] Tool "${tool.id}" has missing description`);
+  }
+  if (!tool.inputSchema || typeof tool.inputSchema.parse !== 'function') {
+    throw new Error(`[plugin-manager] Tool "${tool.id}" inputSchema must be a Zod schema`);
+  }
+  if (typeof tool.handler !== 'function') {
+    throw new Error(`[plugin-manager] Tool "${tool.id}" handler must be a function`);
+  }
 }
 
 let _manager: PluginManagerImpl | null = null;
