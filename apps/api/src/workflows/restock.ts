@@ -10,6 +10,7 @@ const checkStockStep = createStep({
     lowStockOnly: z.boolean().default(true),
   }),
   outputSchema: z.object({
+    tenantId: z.string(),
     lowStockProducts: z.array(
       z.object({
         id: z.number(),
@@ -47,13 +48,14 @@ const checkStockStep = createStep({
       .filter((p) => p.currentStock <= p.lowStockAt && p.lowStockAt > 0);
 
     return {
+      tenantId,
       lowStockProducts,
       totalLowStock: lowStockProducts.length,
     };
   },
 });
 
-// Step 2: Look up suppliers and select products to order
+// Step 2: Look up suppliers and select products to order (suspend for owner input)
 const lookupSuppliersStep = createStep({
   id: 'lookup-suppliers',
   inputSchema: z.object({
@@ -67,40 +69,36 @@ const lookupSuppliersStep = createStep({
         suggestedReorder: z.number(),
       }),
     ),
+    totalLowStock: z.number(),
   }),
   outputSchema: z.object({
-    suppliers: z.array(
-      z.object({
-        id: z.number(),
-        name: z.string(),
-        phone: z.string().nullable(),
-      }),
-    ),
-    products: z.array(
+    tenantId: z.string(),
+    selectedProducts: z.array(
       z.object({
         id: z.number(),
         name: z.string(),
         suggestedQty: z.number(),
       }),
     ),
-    suspendPayload: z
+    poDraft: z
       .object({
-        reason: z.string(),
-        products: z.array(
+        items: z.array(
           z.object({
-            id: z.number(),
-            name: z.string(),
-            currentStock: z.number(),
-            suggestedQty: z.number(),
+            productName: z.string(),
+            quantity: z.number(),
+            estimatedPrice: z.number().nullable(),
           }),
         ),
+        totalEstimate: z.number().nullable(),
+        generatedAt: z.string(),
       })
       .optional(),
+    suspended: z.boolean(),
+    suspendReason: z.string().optional(),
   }),
   resumeSchema: z.object({
     action: z.enum(['approve', 'reject']),
-    selectedProductIds: z.array(z.number()),
-    supplierId: z.number().optional(),
+    selectedProductIds: z.array(z.number()).optional(),
   }),
   execute: async ({ inputData, resumeData, suspend }) => {
     const db = getDb();
@@ -112,68 +110,100 @@ const lookupSuppliersStep = createStep({
       args: [tenantId],
     });
 
-    const suppliers = supplierResult.rows.map((r) => ({
-      id: Number(r.id),
-      name: String(r.name),
-      phone: r.phone ? String(r.phone) : null,
-    }));
-
     if (resumeData) {
       // Resume with selected products
       const { action, selectedProductIds } = resumeData;
+
+      if (action === 'reject' || !selectedProductIds || selectedProductIds.length === 0) {
+        return {
+          tenantId,
+          selectedProducts: [],
+          poDraft: undefined,
+          suspended: false,
+        };
+      }
+
       const selectedProducts = lowStockProducts.filter((p) =>
         selectedProductIds.includes(p.id)
       );
 
-      if (action === 'reject' || selectedProductIds.length === 0) {
-        return {
-          suppliers,
-          products: [],
-          suspendPayload: undefined,
-        };
+      // Get product prices for estimation
+      const priceResult = await db.execute({
+        sql: `SELECT id, price_idr FROM products WHERE id IN (${selectedProductIds.map(() => '?').join(',')})`,
+        args: selectedProductIds,
+      });
+
+      const priceMap = new Map<number, number>();
+      for (const row of priceResult.rows) {
+        priceMap.set(Number(row.id), Number(row.price_idr));
       }
 
+      const poItems = selectedProducts.map((p) => ({
+        productName: p.name,
+        quantity: p.suggestedReorder,
+        estimatedPrice: priceMap.get(p.id) ?? null,
+      }));
+
+      const totalEstimate = poItems.reduce(
+        (sum, item) => sum + (item.estimatedPrice ?? 0) * item.quantity,
+        0
+      );
+
       return {
-        suppliers,
-        products: selectedProducts.map((p) => ({
+        tenantId,
+        selectedProducts: selectedProducts.map((p) => ({
           id: p.id,
           name: p.name,
           suggestedQty: p.suggestedReorder,
         })),
-        suspendPayload: undefined,
+        poDraft: {
+          items: poItems,
+          totalEstimate,
+          generatedAt: new Date().toISOString(),
+        },
+        suspended: false,
       };
     }
 
     // First run - suspend for owner to select products
-    const reason = `Low stock alert: ${lowStockProducts.length} produk perlu restock. Pilih produk dan supplier untuk membuat PO.`;
+    const reason = `Low stock alert: ${lowStockProducts.length} produk perlu restock. Kirim /restock select [id1,id2] untuk pilih produk, atau /restock reject untuk batal.`;
 
     return suspend({
       reason,
-      products: lowStockProducts.map((p) => ({
-        id: p.id,
-        name: p.name,
-        currentStock: p.currentStock,
-        suggestedQty: p.suggestedReorder,
-      })),
     });
   },
 });
 
-// Step 3: Generate PO draft and suspend for approval
+// Step 3: Generate PO draft and suspend for final approval
 const generatePoStep = createStep({
   id: 'generate-po',
   inputSchema: z.object({
-    products: z.array(
+    tenantId: z.string(),
+    selectedProducts: z.array(
       z.object({
         id: z.number(),
         name: z.string(),
         suggestedQty: z.number(),
       }),
     ),
-    supplierId: z.number().optional(),
-    tenantId: z.string(),
+    poDraft: z
+      .object({
+        items: z.array(
+          z.object({
+            productName: z.string(),
+            quantity: z.number(),
+            estimatedPrice: z.number().nullable(),
+          }),
+        ),
+        totalEstimate: z.number().nullable(),
+        generatedAt: z.string(),
+      })
+      .optional(),
+    suspended: z.boolean(),
+    suspendReason: z.string().optional(),
   }),
   outputSchema: z.object({
+    tenantId: z.string(),
     poDraft: z.object({
       items: z.array(
         z.object({
@@ -185,82 +215,47 @@ const generatePoStep = createStep({
       totalEstimate: z.number().nullable(),
       generatedAt: z.string(),
     }),
-    suspendPayload: z
-      .object({
-        reason: z.string(),
-        poDraft: z.object({
-          items: z.array(
-            z.object({
-              productName: z.string(),
-              quantity: z.number(),
-              estimatedPrice: z.number().nullable(),
-            }),
-          ),
-          totalEstimate: z.number().nullable(),
-        }),
-      })
-      .optional(),
+    suspended: z.boolean(),
+    suspendReason: z.string().optional(),
+    approved: z.boolean().optional(),
   }),
   resumeSchema: z.object({
     action: z.enum(['approve', 'reject']),
   }),
   execute: async ({ inputData, resumeData, suspend }) => {
-    const db = getDb();
-    const { products, tenantId } = inputData;
+    const { tenantId, selectedProducts, poDraft, suspended } = inputData;
 
-    if (products.length === 0) {
+    // If no products selected or rejected earlier, skip
+    if (!selectedProducts.length || !poDraft) {
       return {
+        tenantId,
         poDraft: {
           items: [],
           totalEstimate: null,
           generatedAt: new Date().toISOString(),
         },
-        suspendPayload: undefined,
+        suspended: false,
       };
     }
 
-    // Get product prices for estimation
-    const productIds = products.map((p) => p.id);
-    const placeholders = productIds.map(() => '?').join(',');
-    const priceResult = await db.execute({
-      sql: `SELECT id, price_idr FROM products WHERE id IN (${placeholders})`,
-      args: productIds,
-    });
-
-    const priceMap = new Map<number, number>();
-    for (const row of priceResult.rows) {
-      priceMap.set(Number(row.id), Number(row.price_idr));
+    if (suspended) {
+      // This step was re-entered after suspend in lookupSuppliersStep
+      // But since we already have poDraft, just continue
     }
 
-    const poItems = products.map((p) => ({
-      productName: p.name,
-      quantity: p.suggestedQty,
-      estimatedPrice: priceMap.get(p.id) ?? null,
-    }));
-
-    const totalEstimate = poItems.reduce(
-      (sum, item) => sum + (item.estimatedPrice ?? 0) * item.quantity,
-      0
-    );
-
-    const poDraft = {
-      items: poItems,
-      totalEstimate,
-      generatedAt: new Date().toISOString(),
-    };
-
     if (!resumeData) {
-      // Suspend for owner approval
+      // Suspend for final owner approval
       return suspend({
-        reason: `Draft PO siap untuk di-review: ${products.length} item, estimasi total Rp ${totalEstimate.toLocaleString('id-ID')}. Ketik /restock approve untuk approve atau /restock reject untuk tolak.`,
-        poDraft,
+        reason: `Draft PO siap: ${selectedProducts.length} item, estimasi Rp ${(poDraft.totalEstimate ?? 0).toLocaleString('id-ID')}. Ketik /restock approve untuk approve atau /restock reject untuk tolak.`,
       });
     }
 
     // Resume with approval/rejection
     return {
+      tenantId,
       poDraft,
-      suspendPayload: undefined,
+      suspended: false,
+      approved: resumeData.action === 'approve',
     };
   },
 });
@@ -269,6 +264,7 @@ const generatePoStep = createStep({
 const confirmOrderStep = createStep({
   id: 'confirm-order',
   inputSchema: z.object({
+    tenantId: z.string(),
     poDraft: z.object({
       items: z.array(
         z.object({
@@ -280,11 +276,9 @@ const confirmOrderStep = createStep({
       totalEstimate: z.number().nullable(),
       generatedAt: z.string(),
     }),
-    resumeData: z
-      .object({
-        action: z.enum(['approve', 'reject']),
-      })
-      .optional(),
+    suspended: z.boolean(),
+    suspendReason: z.string().optional(),
+    approved: z.boolean().optional(),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -292,21 +286,12 @@ const confirmOrderStep = createStep({
     poDraftPath: z.string().optional(),
   }),
   execute: async ({ inputData }) => {
-    const { poDraft } = inputData;
-    const action = inputData.resumeData?.action;
+    const { tenantId, poDraft, approved } = inputData;
 
-    if (poDraft.items.length === 0) {
+    if (!approved || poDraft.items.length === 0) {
       return {
         success: false,
-        message: 'Tidak ada item untuk diorder',
-        poDraftPath: undefined,
-      };
-    }
-
-    if (action === 'reject') {
-      return {
-        success: false,
-        message: 'PO draft ditolak oleh owner',
+        message: 'PO draft ditolak atau tidak ada item',
         poDraftPath: undefined,
       };
     }
@@ -335,7 +320,7 @@ const confirmOrderStep = createStep({
     return {
       success: true,
       message: `PO draft siap: ${poDraft.items.length} item, estimasi Rp ${(poDraft.totalEstimate ?? 0).toLocaleString('id-ID')}`,
-      poDraftPath: `data/workspaces/default/owner/files/draft-po-${Date.now()}.txt`,
+      poDraftPath: `data/workspaces/${tenantId}/owner/files/draft-po-${Date.now()}.txt`,
     };
   },
 });
