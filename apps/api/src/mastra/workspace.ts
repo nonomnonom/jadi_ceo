@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LocalFilesystem, WORKSPACE_TOOLS, Workspace } from '@mastra/core/workspace';
@@ -15,9 +15,66 @@ export function ownerWorkspaceBasePath(tenantId: string): string {
   return resolve(DATA_ROOT, 'workspaces', tenantId, 'owner');
 }
 
+const DEFAULT_BRAND_CSS = `:root {
+  /* Primary colors */
+  --brand-primary: #1a1a2e;
+  --brand-primary-light: #2d2d44;
+  --brand-accent: #e94560;
+  --brand-accent-light: #ff6b6b;
+
+  /* Neutral colors */
+  --brand-bg: #fafaf9;
+  --brand-surface: #ffffff;
+  --brand-text: #1c1917;
+  --brand-text-muted: #78716c;
+
+  /* Status colors */
+  --brand-success: #22c55e;
+  --brand-warning: #f59e0b;
+  --brand-error: #ef4444;
+
+  /* Spacing */
+  --brand-radius-sm: 0.375rem;
+  --brand-radius-md: 0.5rem;
+  --brand-radius-lg: 0.75rem;
+  --brand-radius-xl: 1rem;
+}`;
+
+const DEFAULT_BRAND_JSON = JSON.stringify(
+  {
+    name: 'Juragan',
+    tagline: 'Asisten Bisnis Cerdas',
+    colors: {
+      primary: '#1a1a2e',
+      accent: '#e94560',
+      background: '#fafaf9',
+      surface: '#ffffff',
+      text: '#1c1917',
+      success: '#22c55e',
+      warning: '#f59e0b',
+      error: '#ef4444',
+    },
+    fonts: {
+      heading: 'Inter, system-ui, sans-serif',
+      body: 'Inter, system-ui, sans-serif',
+    },
+    createdAt: new Date().toISOString(),
+  },
+  null,
+  2
+);
+
+function initDesignSystem(basePath: string): void {
+  const designDir = resolve(basePath, 'design-system');
+  mkdirSync(designDir, { recursive: true });
+  writeFileSync(resolve(designDir, 'brand.css'), DEFAULT_BRAND_CSS);
+  writeFileSync(resolve(designDir, 'brand.json'), DEFAULT_BRAND_JSON);
+}
+
 export function createOwnerWorkspace(tenantId: string): Workspace {
   const basePath = ownerWorkspaceBasePath(tenantId);
   mkdirSync(basePath, { recursive: true });
+  initDesignSystem(basePath);
   return new Workspace({
     filesystem: new LocalFilesystem({
       basePath,

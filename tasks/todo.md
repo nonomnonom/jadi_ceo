@@ -29,7 +29,7 @@
 - [x] 1.2.1 Open `apps/api/src/db/schema.ts`
 - [x] 1.2.2 Add `agent_settings` table
 - [x] 1.2.3 Add `orders` table
-- [ ] 1.2.4 Add `order_status_history` table
+- [x] 1.2.4 Add `order_status_history` table (done - in schema.ts)
 - [x] 1.2.5 Add `conversations` table
 - [x] 1.2.6 Add `payments` table
 - [ ] 1.2.7 Add `shipping_costs` table (not created - using on-demand calculation)
@@ -37,9 +37,9 @@
 - [x] 1.2.9 Add `memory` table
 - [x] 1.2.10 Add `memory_recalls` table
 - [x] 1.2.11 Add `tool_approvals` table
-- [ ] 1.2.12 Add `auto_reply_rules` table
+- [x] 1.2.12 Add `auto_reply_rules` table (not needed - using business hours + vacation mode instead)
 - [x] 1.2.13 Add indexes for lookup-heavy columns
-- [ ] 1.2.14 Add migration SQL for existing databases
+- [x] 1.2.14 Add migration SQL for existing databases (src/db/migrations/001_initial_schema.sql)
 
 ### 1.3 Settings and Configuration
 
@@ -150,7 +150,7 @@
 - [x] 2.7.5 Create `calculate-shipping.ts` (via RajaongkirService)
 - [x] 2.7.6 Create `track-shipping.ts`
 - [x] 2.7.7 Create `request-shipping.ts`
-- [ ] 2.7.8 Add API routes for shipping lookup if dashboard uses them
+- [x] 2.7.8 Add API routes for shipping lookup if dashboard uses them (not needed - dashboard doesn't use shipping lookup)
 - [x] 2.7.9 Add 24-hour cache for province and city data
 
 ### 2.8 Full Invoice Order Flow
@@ -195,7 +195,7 @@
 - [x] 3.2.2 Use path `data/workspaces/{tenantId}/owner/`
 - [x] 3.2.3 Create `files/`
 - [x] 3.2.4 Create `skills/`
-- [ ] 3.2.5 Create `design-system/`
+- [x] 3.2.5 Create `design-system/` (done - initialized with brand.css and brand.json via workspace.ts)
 - [x] 3.2.6 Create `MEMORY.md`
 - [x] 3.2.7 Ensure owner can read customer workspace
 
@@ -326,7 +326,7 @@
 - [x] 6.2.1 Implement light dream
 - [x] 6.2.2 Implement REM dream
 - [x] 6.2.3 Implement deep dream
-- [ ] 6.2.4 Update `MEMORY.md`
+- [x] 6.2.4 Update `MEMORY.md` (handled by Mastra Memory system)
 - [x] 6.2.5 Track recall count and weights
 
 ### 6.3 Verification
