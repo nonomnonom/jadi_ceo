@@ -1,6 +1,7 @@
 import { registerApiRoute } from '@mastra/core/server';
 import { getDb } from '../db/client.js';
 import { type SettingKey, getSetting, maskSecret, setSetting } from '../db/settings.js';
+import { createTelegramSender, tickOnce } from '../reminders/executor.js';
 import { ownerWorkspace } from './agents/juragan.js';
 
 const tenantId = process.env.DEFAULT_TENANT_ID ?? 'default';
@@ -49,9 +50,11 @@ export const apiRoutes = [
       const db = getDb();
       const openrouterApiKey = await getSetting(db, tenantId, 'openrouterApiKey');
       const telegramBotToken = await getSetting(db, tenantId, 'telegramBotToken');
+      const telegramOwnerChatId = await getSetting(db, tenantId, 'telegramOwnerChatId');
       return c.json({
         openrouterApiKey: maskSecret(openrouterApiKey),
         telegramBotToken: maskSecret(telegramBotToken),
+        telegramOwnerChatId,
         configured: Boolean(openrouterApiKey),
         envHasOpenRouter: Boolean(process.env.OPENROUTER_API_KEY),
       });
@@ -67,6 +70,7 @@ export const apiRoutes = [
       const body = (await c.req.json().catch(() => null)) as {
         openrouterApiKey?: string;
         telegramBotToken?: string;
+        telegramOwnerChatId?: string;
       } | null;
       if (!body) return c.json({ error: 'Invalid JSON body' }, 400);
       const db = getDb();
@@ -79,9 +83,16 @@ export const apiRoutes = [
         await setSetting(db, tenantId, 'telegramBotToken', body.telegramBotToken);
         saved.push('telegramBotToken');
       }
+      if (typeof body.telegramOwnerChatId === 'string' && body.telegramOwnerChatId.length > 0) {
+        await setSetting(db, tenantId, 'telegramOwnerChatId', body.telegramOwnerChatId);
+        saved.push('telegramOwnerChatId');
+      }
       return c.json({
         saved,
-        restartRequired: saved.length > 0,
+        // chat id is hot-reloadable by the reminder loop (reads env every tick);
+        // the others still need a restart because the agent + adapter read them
+        // at construction time.
+        restartRequired: saved.some((k) => k !== 'telegramOwnerChatId'),
       });
     },
   }),
@@ -123,6 +134,23 @@ export const apiRoutes = [
         bot: result.bot,
         deepLink: `https://t.me/${result.bot.username}`,
       });
+    },
+  }),
+  registerApiRoute('/custom/reminders/tick', {
+    method: 'POST',
+    openapi: {
+      summary: 'Manually run the reminder executor once. Handy for testing without waiting 60s.',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const db = getDb();
+      const botToken = process.env.TELEGRAM_BOT_TOKEN ?? null;
+      const chatId = process.env.TELEGRAM_OWNER_CHAT_ID ?? null;
+      const send = botToken
+        ? createTelegramSender(botToken)
+        : async () => ({ ok: false as const, error: 'no bot token' });
+      const result = await tickOnce({ db, tenantId, botToken, chatId, send });
+      return c.json(result);
     },
   }),
   registerApiRoute('/custom/workspace/files', {

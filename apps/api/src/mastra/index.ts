@@ -5,7 +5,8 @@ import '../bootstrap.js';
 
 import { Mastra } from '@mastra/core/mastra';
 import { LibSQLStore } from '@mastra/libsql';
-import { DATABASE_URL } from '../db/client.js';
+import { DATABASE_URL, getDb } from '../db/client.js';
+import { startReminderExecutor } from '../reminders/executor.js';
 import { juraganAgent } from './agents/juragan.js';
 import { apiRoutes } from './api-routes.js';
 
@@ -23,3 +24,8 @@ export const mastra = new Mastra({
     apiRoutes,
   },
 });
+
+// Kick off the reminder loop after the Mastra instance exists. Survives the Mastra dev
+// server reload, so the interval lives for the lifetime of the Node process.
+const defaultTenantId = process.env.DEFAULT_TENANT_ID ?? 'default';
+startReminderExecutor(getDb(), defaultTenantId);

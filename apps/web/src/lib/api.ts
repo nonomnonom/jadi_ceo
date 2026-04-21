@@ -97,6 +97,7 @@ export async function readWorkspaceFile(path: string): Promise<{ content: string
 export type SettingsStatus = {
   openrouterApiKey: string | null;
   telegramBotToken: string | null;
+  telegramOwnerChatId: string | null;
   configured: boolean;
   envHasOpenRouter: boolean;
 };
@@ -110,6 +111,7 @@ export async function getSettings(): Promise<SettingsStatus> {
 export async function saveSettings(body: {
   openrouterApiKey?: string;
   telegramBotToken?: string;
+  telegramOwnerChatId?: string;
 }): Promise<{ saved: string[]; restartRequired: boolean }> {
   const res = await fetch('/custom/settings', {
     method: 'POST',
@@ -118,6 +120,18 @@ export async function saveSettings(body: {
   });
   if (!res.ok) throw new Error(`save settings: ${res.status} ${await res.text()}`);
   return (await res.json()) as { saved: string[]; restartRequired: boolean };
+}
+
+export type TickReminderResult = {
+  checked: number;
+  dispatched: number;
+  skipped: Array<{ id: number; reason: string }>;
+};
+
+export async function tickReminders(): Promise<TickReminderResult> {
+  const res = await fetch('/custom/reminders/tick', { method: 'POST' });
+  if (!res.ok) throw new Error(`tick reminders: ${res.status}`);
+  return (await res.json()) as TickReminderResult;
 }
 
 // ---- Telegram ----

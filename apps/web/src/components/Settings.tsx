@@ -14,6 +14,7 @@ export function Settings() {
   const [tgStatus, setTgStatus] = useState<TelegramStatus | null>(null);
   const [openrouterKey, setOpenrouterKey] = useState('');
   const [telegramToken, setTelegramToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
   const [tgTestResult, setTgTestResult] = useState<TelegramTestResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +42,14 @@ export function Settings() {
     setError(null);
     setResult(null);
     try {
-      const body: { openrouterApiKey?: string; telegramBotToken?: string } = {};
+      const body: {
+        openrouterApiKey?: string;
+        telegramBotToken?: string;
+        telegramOwnerChatId?: string;
+      } = {};
       if (openrouterKey.length > 0) body.openrouterApiKey = openrouterKey;
       if (telegramToken.length > 0) body.telegramBotToken = telegramToken;
+      if (telegramChatId.trim().length > 0) body.telegramOwnerChatId = telegramChatId.trim();
       if (Object.keys(body).length === 0) {
         setError('Isi minimal satu field');
         return;
@@ -52,6 +58,7 @@ export function Settings() {
       setResult(res);
       setOpenrouterKey('');
       setTelegramToken('');
+      setTelegramChatId('');
       setTgTestResult(null);
       refreshStatus();
     } catch (err) {
@@ -93,6 +100,12 @@ export function Settings() {
             hint={
               tgStatus && 'bot' in tgStatus ? `bot aktif: @${tgStatus.bot.username}` : undefined
             }
+          />
+          <StatusRow
+            label="Telegram chat ID owner"
+            configured={status ? Boolean(status.telegramOwnerChatId) : null}
+            masked={status?.telegramOwnerChatId ?? null}
+            hint="tujuan push pengingat otomatis"
           />
         </div>
       </section>
@@ -149,6 +162,14 @@ export function Settings() {
             ) : null}
           </div>
         </div>
+
+        <Field
+          label="Telegram chat ID (owner)"
+          hint='Nomor chat Telegram kamu — buat push pengingat otomatis. Cara cepat: DM @userinfobot di Telegram, dia kasih "Id: 123456789". Paste angkanya di sini. Tidak perlu restart server untuk field ini.'
+          value={telegramChatId}
+          onChange={setTelegramChatId}
+          placeholder="123456789"
+        />
 
         {error ? (
           <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>

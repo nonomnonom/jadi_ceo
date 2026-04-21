@@ -19,3 +19,8 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
   const stored = await getSetting(db, tenantId, 'telegramBotToken');
   if (stored) process.env.TELEGRAM_BOT_TOKEN = stored;
 }
+
+if (!process.env.TELEGRAM_OWNER_CHAT_ID) {
+  const stored = await getSetting(db, tenantId, 'telegramOwnerChatId');
+  if (stored) process.env.TELEGRAM_OWNER_CHAT_ID = stored;
+}

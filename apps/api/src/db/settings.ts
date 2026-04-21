@@ -1,6 +1,6 @@
 import type { Db } from './client.js';
 
-export type SettingKey = 'openrouterApiKey' | 'telegramBotToken';
+export type SettingKey = 'openrouterApiKey' | 'telegramBotToken' | 'telegramOwnerChatId';
 
 export async function getSetting(
   db: Db,
