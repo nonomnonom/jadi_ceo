@@ -24,8 +24,20 @@ export function registerAcpRoutes() {
 
   registerApiRoute('/acp/sessions/:key', {
     method: 'GET',
-    handler: async () => {
-      return Response.json({ error: 'not implemented' }, { status: 501 });
+    handler: async (): Promise<Response> => {
+      const url = new URL('', 'http://localhost');
+      const key = url.pathname.split('/').pop() ?? '';
+      const manager = getAcpSessionManager();
+      const cached = manager.getCachedSession(key);
+      if (cached) {
+        return Response.json({ session: cached, source: 'cache' });
+      }
+      const sessions = await manager.listSessions(DEFAULT_TENANT_ID, 100);
+      const dbSession = sessions.find((s: unknown) => (s as { sessionKey: string }).sessionKey === key);
+      if (dbSession) {
+        return Response.json({ session: dbSession, source: 'db' });
+      }
+      return Response.json({ session: null }, { status: 404 });
     },
   });
 
@@ -40,9 +52,8 @@ export function registerAcpRoutes() {
 
   registerApiRoute('/acp/sessions/:key/close', {
     method: 'POST',
-    handler: async (): Promise<Response> => {
-      const url = new URL('', 'http://localhost');
-      const key = url.pathname.split('/').pop() ?? '';
+    handler: async (c): Promise<Response> => {
+      const key = (c as { params?: { key?: string } }).params?.key ?? '';
       const manager = getAcpSessionManager();
       const cached = manager.getCachedSession(key);
       if (cached) {
