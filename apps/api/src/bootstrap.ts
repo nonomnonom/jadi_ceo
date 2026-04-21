@@ -12,8 +12,10 @@ import { getPluginManager } from '@juragan/core';
 // promotion is complete.
 const db = getDb();
 await initSchema(db);
-await initAcpSchema(db);
-getAcpSessionManager().setDb(db);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+await initAcpSchema(db as any);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(getAcpSessionManager() as any).setDb(db as any);
 
 if (!process.env.OPENROUTER_API_KEY) {
   const stored = await getSetting(db, tenantId, 'openrouterApiKey');
