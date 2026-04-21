@@ -23,6 +23,9 @@ importers:
       '@chat-adapter/telegram':
         specifier: ^4.26.0
         version: 4.26.0
+      '@juragan/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@juragan/queue':
         specifier: workspace:*
         version: link:../../packages/queue
