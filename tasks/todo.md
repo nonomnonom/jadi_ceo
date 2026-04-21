@@ -58,17 +58,17 @@
 - [x] 1.4.4 Implement connection update handler
 - [x] 1.4.5 Implement inbound message handler
 - [x] 1.4.6 Implement outbound send message helper
-- [ ] 1.4.7 Implement reconnect strategy
-- [ ] 1.4.8 Handle auth invalidation and re-pair scenario
-- [ ] 1.4.9 Support text and basic media send
+- [x] 1.4.7 Implement reconnect strategy (handleDisconnect with max attempts)
+- [x] 1.4.8 Handle auth invalidation and re-pair scenario (via QR refresh)
+- [x] 1.4.9 Support text and basic media send (via sendMessageToJid with `any` content)
 
 ### 1.5 WhatsApp API Routes
 
-- [ ] 1.5.1 Add `GET /custom/whatsapp/qr`
-- [ ] 1.5.2 Add QR rendering helper
-- [ ] 1.5.3 Add `GET /custom/whatsapp/status`
-- [ ] 1.5.4 Add `POST /custom/whatsapp/connect`
-- [ ] 1.5.5 Add `POST /custom/whatsapp/disconnect`
+- [x] 1.5.1 Add `GET /custom/whatsapp/qr`
+- [x] 1.5.2 Add QR rendering helper
+- [x] 1.5.3 Add `GET /custom/whatsapp/status`
+- [x] 1.5.4 Add `POST /custom/whatsapp/connect`
+- [x] 1.5.5 Add `POST /custom/whatsapp/disconnect`
 - [x] 1.5.6 Persist auth and connection status safely
 
 ### 1.6 Telegram Runtime Verification
