@@ -281,7 +281,7 @@
 ### 4.6 Operator Utility Commands
 
 - [x] 4.6.1 Implement `/skill [name]` (skill-commands.ts)
-- [ ] 4.6.2 Implement `/retry`
+- [x] 4.6.2 Implement `/retry` (retry-commands.ts)
 - [ ] 4.6.3 Implement `/thread [topic]`
 
 ### 4.7 Phase 4 Verification
