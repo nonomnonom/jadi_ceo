@@ -9,7 +9,7 @@ import { LibSQLStore } from '@mastra/libsql';
 import { DATABASE_URL, getDb } from '../db/client.js';
 import { startReminderExecutor } from '../reminders/executor.js';
 import { customerAgent } from './agents/customer/index.js';
-import { juraganAgent } from './agents/juragan.js';
+import { ownerSupervisor } from './agents/owner-supervisor.js';
 import { apiRoutes } from './api-routes.js';
 
 export const mastra = new Mastra({
@@ -17,7 +17,7 @@ export const mastra = new Mastra({
     id: 'juragan-store',
     url: DATABASE_URL,
   }),
-  agents: { juragan: juraganAgent, customer: customerAgent },
+  agents: { ownerSupervisor, customer: customerAgent },
   workflows: {},
   bundler: {
     transpilePackages: ['@juragan/shared'],

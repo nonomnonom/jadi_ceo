@@ -6,7 +6,7 @@ import { getWhatsAppManager, phoneToJid } from '../channels/whatsapp-manager.js'
 import { getDb } from '../db/client.js';
 import { type SettingKey, getSetting, maskSecret, setSetting } from '../db/settings.js';
 import { createTelegramSender, tickOnce } from '../reminders/executor.js';
-import { juraganAgent, ownerWorkspace } from './agents/juragan.js';
+import { ownerSupervisor, ownerWorkspace } from './agents/owner-supervisor.js';
 
 function requireAuth(c: {
   req: { header: (name: string) => string | undefined };
@@ -306,7 +306,7 @@ export const apiRoutes = [
       }
 
       // Run the agent
-      const response = await juraganAgent.generate(String(sched.prompt));
+      const response = await ownerSupervisor.generate(String(sched.prompt));
 
       // Send to Telegram
       const botToken = process.env.TELEGRAM_BOT_TOKEN ?? null;
