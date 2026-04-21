@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, watch } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type {
@@ -49,6 +49,9 @@ class PluginManagerImpl {
   private skills: SkillManifest[] = [];
   private settings = new Map<string, { schema: z.ZodSchema; defaults: unknown }>();
   private events = new Map<string, Set<(data: unknown) => void>>();
+  private skillsWatcher: ReturnType<typeof watch> | null = null;
+  private skillsDir: string | null = null;
+  private skillReloadTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   async discover(directories: string[]): Promise<DiscoveredPlugin[]> {
     const discovered: DiscoveredPlugin[] = [];
@@ -148,15 +151,19 @@ class PluginManagerImpl {
     if (this.skills.length === 0) {
       // Lazy discovery: if called before discoverSkills() was invoked (e.g. in tests),
       // try loading from the default skills/ directory relative to cwd.
-      this.discoverSkills(join(process.cwd(), 'skills')).catch(() => {
-        // Ignore — skills will remain empty
-      });
+      void this.loadSkillsFromDir(join(process.cwd(), 'skills'));
     }
     return [...this.skills];
   }
 
   /** Discover skills from the skills/ directory (auto-loaded built-in skills). */
   async discoverSkills(skillsDir: string): Promise<SkillManifest[]> {
+    await this.loadSkillsFromDir(skillsDir);
+    this.startSkillsWatcher(skillsDir);
+    return [...this.skills];
+  }
+
+  private async loadSkillsFromDir(skillsDir: string): Promise<void> {
     try {
       const entries = await fs.readdir(skillsDir, { withFileTypes: true });
       for (const entry of entries) {
@@ -178,7 +185,80 @@ class PluginManagerImpl {
     } catch {
       // skills dir doesn't exist
     }
-    return [...this.skills];
+  }
+
+  private startSkillsWatcher(skillsDir: string): void {
+    // Stop any existing watcher
+    this.stopSkillsWatcher();
+    this.skillsDir = skillsDir;
+
+    try {
+      this.skillsWatcher = watch(skillsDir, { recursive: true }, (_eventType, filename) => {
+        if (!filename || typeof filename !== 'string' || !filename.endsWith('SKILL.md')) return;
+        // Debounce: multiple events fire per file change; reload after 100ms quiet
+        const existing = this.skillReloadTimers.get(filename);
+        if (existing) clearTimeout(existing);
+        const timer = setTimeout(() => {
+          this.skillReloadTimers.delete(filename);
+          void this.reloadSkill(filename);
+        }, 100);
+        this.skillReloadTimers.set(filename, timer);
+      });
+    } catch {
+      // Watching may not be available in all environments (e.g., some container setups)
+    }
+  }
+
+  private async reloadSkill(skillPath: string): Promise<void> {
+    if (!this.skillsDir) return;
+    // skillPath is like "daily-checkin/SKILL.md" — extract skill dir name
+    const parts = skillPath.replace(/\\/g, '/').split('/');
+    if (parts.length !== 2 || parts[1] !== 'SKILL.md') return;
+    const skillDir = parts[0]!;
+    const fullPath = join(this.skillsDir, skillDir, 'SKILL.md');
+
+    try {
+      const content = await fs.readFile(fullPath, 'utf-8');
+      const manifest = parseSkillFrontmatter(content);
+      if (!manifest) return;
+
+      const idx = this.skills.findIndex((s) => s.id === manifest.id);
+      if (idx >= 0) {
+        this.skills[idx] = manifest; // update existing
+      } else {
+        this.skills.push(manifest); // add new
+      }
+      this.emit('skill:reloaded', { id: manifest.id, name: manifest.name });
+    } catch {
+      // File deleted or unreadable — remove from list
+      this.skills = this.skills.filter((s) => s.id !== skillDir);
+      this.emit('skill:removed', { id: skillDir });
+    }
+  }
+
+  private stopSkillsWatcher(): void {
+    if (this.skillsWatcher) {
+      this.skillsWatcher.close();
+      this.skillsWatcher = null;
+    }
+    for (const t of this.skillReloadTimers.values()) {
+      clearTimeout(t);
+    }
+    this.skillReloadTimers.clear();
+  }
+
+  /** Stop all watchers. Call on shutdown. */
+  async dispose(): Promise<void> {
+    this.stopSkillsWatcher();
+    for (const instance of this.plugins.values()) {
+      if (instance.dispose) await instance.dispose();
+    }
+    this.plugins.clear();
+  }
+
+  /** Emit a runtime event to registered handlers. */
+  emit(event: string, data: unknown): void {
+    this.events.get(event)?.forEach((h) => h(data));
   }
 
   private createApi(): OpenClawPluginApi {
