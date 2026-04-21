@@ -1,0 +1,12 @@
+{
+  "id": "whatsapp-channel",
+  "name": "WhatsApp Channel",
+  "version": "1.0.0",
+  "description": "WhatsApp messaging via Baileys — supports QR pairing, reconnect, and auto-reply",
+  "channels": [
+    {
+      "id": "whatsapp",
+      "type": "whatsapp"
+    }
+  ]
+}
