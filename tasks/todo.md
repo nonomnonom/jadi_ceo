@@ -164,9 +164,9 @@
 
 ### 2.9 Cancellation and Tracking
 
-- [ ] 2.9.1 Create `request-cancel.ts`
-- [ ] 2.9.2 Allow cancel only before `processing`
-- [ ] 2.9.3 Create `track-delivery.ts`
+- [x] 2.9.1 Create `request-cancel.ts`
+- [x] 2.9.2 Allow cancel only before `processing`
+- [ ] 2.9.3 Create `track-delivery.ts` (needs Rajaongkir tracking API)
 - [ ] 2.9.4 Return AWB or tracking summary if available
 
 ### 2.10 Phase 2 Verification
@@ -217,10 +217,10 @@
 - [x] 3.4.1 Create `customer-orders.ts` (customer-commands.ts)
 - [x] 3.4.2 Create `customer-conversations.ts` (customer-commands.ts)
 - [x] 3.4.3 Create `customer-agent-ctl.ts` (agent-ctl-commands.ts)
-- [ ] 3.4.4 Create `cashflow-report.ts`
-- [ ] 3.4.5 Create `expense-category.ts`
-- [ ] 3.4.6 Create `search-contacts.ts`
-- [ ] 3.4.7 Create `stock-movements.ts`
+- [x] 3.4.4 Create `cashflow-report.ts`
+- [x] 3.4.5 Create `expense-category.ts`
+- [x] 3.4.6 Create `search-contacts.ts`
+- [x] 3.4.7 Create `stock-movements.ts`
 - [x] 3.4.8 Create `memory-search.ts` (memory-commands.ts)
 - [x] 3.4.9 Create `memory-read.ts` (memory-commands.ts)
 
