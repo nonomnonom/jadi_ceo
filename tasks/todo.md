@@ -246,7 +246,7 @@
 - [x] 4.1.1 Create `commands.ts` (commands/parser.ts)
 - [x] 4.1.2 Implement command parser
 - [x] 4.1.3 Implement registry and dispatch
-- [ ] 4.1.4 Handle invalid command feedback
+- [x] 4.1.4 Handle invalid command feedback
 
 ### 4.2 Order Commands
 

@@ -27,6 +27,7 @@ services:
       - ./apps/api:/app
       - ./node_modules:/app/node_modules
       - ./packages:/app/packages
+      - whatsapp-auth:/app/data/workspaces/default/whatsapp
     environment:
       NODE_ENV: production
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
@@ -90,3 +91,5 @@ services:
 volumes:
   redis-data:
   api-data:
+  whatsapp-auth:
+    driver: local

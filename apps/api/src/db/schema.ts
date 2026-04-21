@@ -217,6 +217,18 @@ const DDL = [
      ON payments (tenant_id, order_id)`,
   `CREATE INDEX IF NOT EXISTS idx_payments_tenant_status
      ON payments (tenant_id, status)`,
+  `CREATE TABLE IF NOT EXISTS order_status_history (
+     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+     tenant_id    TEXT    NOT NULL,
+     order_id     INTEGER NOT NULL,
+     old_status   TEXT,
+     new_status  TEXT    NOT NULL,
+     changed_by   TEXT    NOT NULL,
+     note         TEXT,
+     created_at   INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_order_status_history_order
+     ON order_status_history (tenant_id, order_id, created_at DESC)`,
 ];
 
 export async function initSchema(db: Db): Promise<void> {

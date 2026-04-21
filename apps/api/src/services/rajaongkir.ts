@@ -21,6 +21,19 @@ export interface ShippingCost {
   note: string;
 }
 
+export interface TrackingEvent {
+  datetime: string;
+  desc: string;
+  location: string;
+}
+
+export interface TrackingResult {
+  courier: string;
+  waybill: string;
+  status: string;
+  events: TrackingEvent[];
+}
+
 export class RajaongkirService {
   private baseUrl = 'https://pro.rajaongkir.com/api';
   private db: Db;
@@ -165,6 +178,78 @@ export class RajaongkirService {
     }
 
     return costs;
+  }
+
+  /**
+   * Track a shipment by waybill number and courier code
+   */
+  async trackShipment(waybill: string, courier: string): Promise<TrackingResult> {
+    const apiKey = await this.getApiKey();
+    const response = await fetch(`${this.baseUrl}/waybill`, {
+      method: 'POST',
+      headers: {
+        key: apiKey,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        waybill: waybill,
+        courier: courier,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Rajaongkir tracking API error: ${response.status}`);
+    }
+
+    const data = await response.json() as {
+      rajaongkir: {
+        result: {
+          courier_code: string;
+          waybill_number: string;
+          status: string;
+          delivery_status: {
+            pod_date: string;
+            pod_time: string;
+            desc: string;
+            location: string;
+          };
+          manifest: Array<{
+            manifest_date: string;
+            manifest_time: string;
+            manifest_description: string;
+            city_name: string;
+          }>;
+        };
+      };
+    };
+
+    const result = data.rajaongkir.result;
+    const events: TrackingEvent[] = [];
+
+    // Add delivery status as first event if exists
+    if (result.delivery_status?.desc) {
+      events.push({
+        datetime: `${result.delivery_status.pod_date} ${result.delivery_status.pod_time}`,
+        desc: result.delivery_status.desc,
+        location: result.delivery_status.location,
+      });
+    }
+
+    // Add manifest history
+    for (const m of result.manifest || []) {
+      events.push({
+        datetime: `${m.manifest_date} ${m.manifest_time}`,
+        desc: m.manifest_description,
+        location: m.city_name,
+      });
+    }
+
+    return {
+      courier: result.courier_code,
+      waybill: result.waybill_number,
+      status: result.status,
+      events,
+    };
   }
 
   private async getCached(key: string): Promise<unknown | null> {

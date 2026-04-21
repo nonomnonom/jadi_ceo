@@ -114,6 +114,13 @@ export function createOrderCommandTools({ db, tenantId }: OrderCommandDeps) {
         args: [now, orderId],
       });
 
+      // Record status history
+      await db.execute({
+        sql: `INSERT INTO order_status_history (tenant_id, order_id, old_status, new_status, changed_by, created_at)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [tenantId, orderId, 'pending', 'approved', 'owner', now],
+      });
+
       // Notify customer via WhatsApp
       let customerNotified = false;
       const manager = getWhatsAppManager();
@@ -187,6 +194,13 @@ export function createOrderCommandTools({ db, tenantId }: OrderCommandDeps) {
       await db.execute({
         sql: "UPDATE orders SET status = 'rejected', updated_at = ? WHERE id = ?",
         args: [now, orderId],
+      });
+
+      // Record status history
+      await db.execute({
+        sql: `INSERT INTO order_status_history (tenant_id, order_id, old_status, new_status, changed_by, note, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [tenantId, orderId, 'pending', 'rejected', 'owner', reason ?? null, now],
       });
 
       // Notify customer via WhatsApp
