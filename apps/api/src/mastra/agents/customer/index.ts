@@ -7,7 +7,10 @@ import { createRequestPaymentTool, createCheckPaymentTool } from '../../tools/cu
 
 const db = getDb();
 
-const { listProducts, createOrder, checkOrder } = createCustomerTools({ db, tenantId });
+const { listProducts, createOrder, checkOrder, requestCancel, getOrderTracking } = createCustomerTools({
+  db,
+  tenantId,
+});
 const logConversation = createLogConversationTool({ db, tenantId });
 const customerWorkspace = createCustomerWorkspace(tenantId);
 const { requestPayment } = createRequestPaymentTool({ db, tenantId });
@@ -22,6 +25,8 @@ Kamu adalah asisten toko **Juragan** di WhatsApp. Customer mengontak kamu untuk 
 3. **Cek status pesanan** — \`check-order\` (ID pesanan dari konfirmasi sebelumnya).
 4. **Minta pembayaran** — \`request-payment\` (orderId + amountIdr). Setelah dapat QR image, tambahkan prefix \`[QR_IMAGE]data:image/png;base64,\` di DEPAN base64 data, diikuti caption (kalau ada).
 5. **Cek status pembayaran** — \`check-payment\` (orderId).
+6. **Minta pembatalan** — \`request-cancel\` (orderId + reason opsional). Hanya bisa sebelum dibayar.
+7. **Tracking pesanan** — \`get-order-tracking\` (orderId).
 
 ## Format QR Image
 Kalau kamu memanggil \`request-payment\` dan mendapat respons dengan \`qrImage\` (base64 PNG), tulis jawaban kamu seperti ini:
@@ -63,6 +68,8 @@ export const customerAgent = new Agent({
     listProducts,
     createOrder,
     checkOrder,
+    requestCancel,
+    getOrderTracking,
     logConversation,
     requestPayment,
     checkPayment,

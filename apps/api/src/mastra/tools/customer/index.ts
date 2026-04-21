@@ -2,6 +2,7 @@ import { formatIDR } from '@juragan/shared';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
+import { createRequestCancelTool } from './request-cancel.js';
 
 export type CustomerToolDeps = { db: Db; tenantId: string };
 
@@ -115,5 +116,7 @@ export function createCustomerTools({ db, tenantId }: CustomerToolDeps) {
     },
   });
 
-  return { listProducts, createOrder, checkOrder };
+  const { requestCancel, getOrderTracking } = createRequestCancelTool({ db, tenantId });
+
+  return { listProducts, createOrder, checkOrder, requestCancel, getOrderTracking };
 }

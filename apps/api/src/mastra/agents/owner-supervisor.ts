@@ -26,6 +26,10 @@ import { createModelCommandTools } from '../tools/owner/model-commands.js';
 import { createMemoryCommandTools } from '../tools/owner/memory-commands.js';
 import { createSkillCommandTools } from '../tools/owner/skill-commands.js';
 import { createOwnerPaymentTools } from '../tools/owner/payment-tools.js';
+import { createCashflowReportTools } from '../tools/owner/cashflow-report.js';
+import { createExpenseCategoryTools } from '../tools/owner/expense-category.js';
+import { createSearchContactsTools } from '../tools/owner/search-contacts.js';
+import { createStockMovementTools } from '../tools/owner/stock-movements.js';
 
 const db = getDb();
 
@@ -62,6 +66,13 @@ const { generatePaymentLink, cancelPayment, simulatePayment } = createOwnerPayme
   db,
   tenantId,
 });
+const { getCashflowReport } = createCashflowReportTools({ db, tenantId });
+const { listExpenseCategories, addExpenseCategory, deleteExpenseCategory } = createExpenseCategoryTools({
+  db,
+  tenantId,
+});
+const { searchContacts, getContactDetail } = createSearchContactsTools({ db, tenantId });
+const { listStockMovements, getProductStockSummary } = createStockMovementTools({ db, tenantId });
 
 export const ownerWorkspace = createOwnerWorkspace(tenantId);
 
@@ -105,6 +116,21 @@ Gunakan tool yang sesuai saat owner mengetik perintah:
 - "/payment link [orderId] [amount]" → panggil generate-payment-link
 - "/payment cancel [orderId]" → panggil cancel-payment
 - "/payment simulate [orderId]" → panggil simulate-payment (sandbox only)
+
+### /cashflow - Laporan Arus Kas
+- "/cashflow" atau "/cashflow [hari]" → panggil get-cashflow-report (default 7 hari)
+
+### /contact - Kontak
+- "/contact search [query]" → panggil search-contacts
+- "/contact [id]" → panggil get-contact-detail
+
+### /stock - Stok
+- "/stock movements [productId]" → panggil list-stock-movements
+- "/stock summary" → panggil get-product-stock-summary
+
+### /category - Kategori Pengeluaran
+- "/category list" → panggil list-expense-categories
+- "/category add [nama]" → panggil add-expense-category
 
 ## Delegasi ke Sub-Agent
 Untuk tugas spesifik, delegasi ke agent domain:
@@ -188,6 +214,17 @@ export const ownerSupervisor = new Agent({
     generatePaymentLink,
     cancelPayment,
     simulatePayment,
+    // Cashflow & Reports
+    getCashflowReport,
+    listExpenseCategories,
+    addExpenseCategory,
+    deleteExpenseCategory,
+    // Contact management
+    searchContacts,
+    getContactDetail,
+    // Stock management
+    listStockMovements,
+    getProductStockSummary,
   },
   workspace: ownerWorkspace,
   memory: new Memory({
