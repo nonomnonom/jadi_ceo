@@ -1,3 +1,4 @@
+import { createTelegramAdapter } from '@chat-adapter/telegram';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { getDb } from '../../db/client.js';
@@ -107,4 +108,17 @@ export const juraganAgent = new Agent({
       lastMessages: 20,
     },
   }),
+  // Polling mode so local dev works without a public webhook URL. The adapter
+  // long-polls Telegram directly and reads TELEGRAM_BOT_TOKEN from env on
+  // construction. If no token is set, channels stay off and the agent is still
+  // usable via Studio + the REST API.
+  ...(process.env.TELEGRAM_BOT_TOKEN
+    ? {
+        channels: {
+          adapters: {
+            telegram: createTelegramAdapter({ mode: 'polling' as const }),
+          },
+        },
+      }
+    : {}),
 });

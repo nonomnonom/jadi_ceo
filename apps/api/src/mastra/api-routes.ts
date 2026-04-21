@@ -5,6 +5,39 @@ import { ownerWorkspace } from './agents/juragan.js';
 
 const tenantId = process.env.DEFAULT_TENANT_ID ?? 'default';
 
+type TelegramGetMeResult = {
+  ok: boolean;
+  result?: { id: number; is_bot: boolean; first_name: string; username: string };
+  description?: string;
+};
+
+async function telegramGetMe(
+  token: string,
+): Promise<
+  | { ok: true; bot: { id: number; username: string; firstName: string } }
+  | { ok: false; error: string }
+> {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/getMe`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    const data = (await res.json()) as TelegramGetMeResult;
+    if (!data.ok || !data.result) {
+      return { ok: false, error: data.description ?? `HTTP ${res.status}` };
+    }
+    return {
+      ok: true,
+      bot: {
+        id: data.result.id,
+        username: data.result.username,
+        firstName: data.result.first_name,
+      },
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Request failed' };
+  }
+}
+
 export const apiRoutes = [
   registerApiRoute('/custom/settings', {
     method: 'GET',
@@ -49,6 +82,46 @@ export const apiRoutes = [
       return c.json({
         saved,
         restartRequired: saved.length > 0,
+      });
+    },
+  }),
+  registerApiRoute('/custom/telegram/test', {
+    method: 'POST',
+    openapi: {
+      summary: "Validate a Telegram bot token via Telegram's getMe. Does NOT save the token.",
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const body = (await c.req.json().catch(() => null)) as { token?: string } | null;
+      const token = body?.token?.trim();
+      if (!token) return c.json({ ok: false, error: 'token required' }, 400);
+      const result = await telegramGetMe(token);
+      return c.json(result, result.ok ? 200 : 400);
+    },
+  }),
+  registerApiRoute('/custom/telegram/status', {
+    method: 'GET',
+    openapi: {
+      summary: 'Report whether the Telegram channel is wired + return bot identity if so',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const token = process.env.TELEGRAM_BOT_TOKEN;
+      if (!token) {
+        return c.json({
+          configured: false,
+          note: 'TELEGRAM_BOT_TOKEN not set. Save it in Settings and restart the API server.',
+        });
+      }
+      const result = await telegramGetMe(token);
+      if (!result.ok) {
+        return c.json({ configured: true, botReachable: false, error: result.error });
+      }
+      return c.json({
+        configured: true,
+        botReachable: true,
+        bot: result.bot,
+        deepLink: `https://t.me/${result.bot.username}`,
       });
     },
   }),

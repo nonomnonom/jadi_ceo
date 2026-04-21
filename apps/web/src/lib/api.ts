@@ -119,3 +119,29 @@ export async function saveSettings(body: {
   if (!res.ok) throw new Error(`save settings: ${res.status} ${await res.text()}`);
   return (await res.json()) as { saved: string[]; restartRequired: boolean };
 }
+
+// ---- Telegram ----
+
+export type TelegramBot = { id: number; username: string; firstName: string };
+
+export type TelegramTestResult = { ok: true; bot: TelegramBot } | { ok: false; error: string };
+
+export async function testTelegramToken(token: string): Promise<TelegramTestResult> {
+  const res = await fetch('/custom/telegram/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  return (await res.json()) as TelegramTestResult;
+}
+
+export type TelegramStatus =
+  | { configured: false; note: string }
+  | { configured: true; botReachable: false; error: string }
+  | { configured: true; botReachable: true; bot: TelegramBot; deepLink: string };
+
+export async function getTelegramStatus(): Promise<TelegramStatus> {
+  const res = await fetch('/custom/telegram/status');
+  if (!res.ok) throw new Error(`telegram status: ${res.status}`);
+  return (await res.json()) as TelegramStatus;
+}

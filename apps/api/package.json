@@ -12,6 +12,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@chat-adapter/telegram": "^4.26.0",
     "@juragan/shared": "workspace:*",
     "@libsql/client": "^0.17.0",
     "@mastra/core": "^1.25.0",
