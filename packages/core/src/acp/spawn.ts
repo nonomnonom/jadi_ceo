@@ -15,9 +15,9 @@ import {
   SpawnParamsSchema,
 } from './manager.js';
 
-/** Whether ACP subsystem is enabled (always true for now) */
+/** Whether ACP subsystem is enabled */
 function acpEnabled(): boolean {
-  return true;
+  return process.env.ACP_ENABLED !== 'false';
 }
 
 /** Result of a spawn call */
