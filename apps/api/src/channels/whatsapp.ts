@@ -1,4 +1,4 @@
-import { makeWASocket, useMultiFileAuthState, type WASocket } from 'baileys';
+import { type WASocket, makeWASocket, useMultiFileAuthState } from 'baileys';
 
 export class WhatsAppChannel {
   private sock: WASocket | null = null;

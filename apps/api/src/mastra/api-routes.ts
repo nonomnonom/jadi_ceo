@@ -1,10 +1,35 @@
+import { relative, resolve } from 'node:path';
+import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { registerApiRoute } from '@mastra/core/server';
+import QRCode from 'qrcode';
+import { getWhatsAppManager } from '../channels/whatsapp-manager.js';
 import { getDb } from '../db/client.js';
 import { type SettingKey, getSetting, maskSecret, setSetting } from '../db/settings.js';
 import { createTelegramSender, tickOnce } from '../reminders/executor.js';
-import { ownerWorkspace } from './agents/juragan.js';
+import { juraganAgent, ownerWorkspace } from './agents/juragan.js';
 
-const tenantId = process.env.DEFAULT_TENANT_ID ?? 'default';
+function requireAuth(c: {
+  req: { header: (name: string) => string | undefined };
+}): Response | null {
+  const secret = process.env.DASHBOARD_SECRET;
+  if (!secret) return null; // auth disabled when var is unset
+  const token = c.req.header('authorization') ?? '';
+  if (token !== `Bearer ${secret}`) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return null;
+}
+
+function workspacePathSafe(requestedPath: string): boolean {
+  const fs = ownerWorkspace.filesystem as { basePath?: string };
+  const base = fs.basePath ?? '';
+  if (!base) return true; // no base — skip check
+  const resolved = resolve(base, requestedPath.replace(/^\/+/, ''));
+  return !relative(base, resolved).startsWith('..');
+}
 
 type TelegramGetMeResult = {
   ok: boolean;
@@ -47,6 +72,8 @@ export const apiRoutes = [
       tags: ['custom'],
     },
     handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
       const db = getDb();
       const openrouterApiKey = await getSetting(db, tenantId, 'openrouterApiKey');
       const telegramBotToken = await getSetting(db, tenantId, 'telegramBotToken');
@@ -67,6 +94,8 @@ export const apiRoutes = [
       tags: ['custom'],
     },
     handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
       const body = (await c.req.json().catch(() => null)) as {
         openrouterApiKey?: string;
         telegramBotToken?: string;
@@ -89,9 +118,6 @@ export const apiRoutes = [
       }
       return c.json({
         saved,
-        // chat id is hot-reloadable by the reminder loop (reads env every tick);
-        // the others still need a restart because the agent + adapter read them
-        // at construction time.
         restartRequired: saved.some((k) => k !== 'telegramOwnerChatId'),
       });
     },
@@ -103,6 +129,8 @@ export const apiRoutes = [
       tags: ['custom'],
     },
     handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
       const body = (await c.req.json().catch(() => null)) as { token?: string } | null;
       const token = body?.token?.trim();
       if (!token) return c.json({ ok: false, error: 'token required' }, 400);
@@ -117,6 +145,8 @@ export const apiRoutes = [
       tags: ['custom'],
     },
     handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
       const token = process.env.TELEGRAM_BOT_TOKEN;
       if (!token) {
         return c.json({
@@ -143,6 +173,8 @@ export const apiRoutes = [
       tags: ['custom'],
     },
     handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
       const db = getDb();
       const botToken = process.env.TELEGRAM_BOT_TOKEN ?? null;
       const chatId = process.env.TELEGRAM_OWNER_CHAT_ID ?? null;
@@ -160,16 +192,20 @@ export const apiRoutes = [
       tags: ['custom'],
     },
     handler: async (c) => {
-      // LocalFilesystem contained mode resolves relative paths against basePath, so '' == root.
+      const authed = requireAuth(c);
+      if (authed) return authed;
       const raw = c.req.query('path') ?? '';
-      const path = raw === '/' ? '' : raw.replace(/^\/+/, '');
+      const reqPath = raw === '/' ? '' : raw.replace(/^\/+/, '');
+      if (!workspacePathSafe(reqPath)) {
+        return c.json({ error: 'path escapes workspace' }, 403);
+      }
       const fs = ownerWorkspace.filesystem;
       if (!fs) return c.json({ entries: [] });
       try {
-        const rawEntries = await fs.readdir(path === '' ? '.' : path);
+        const rawEntries = await fs.readdir(reqPath === '' ? '.' : reqPath);
         const entries = rawEntries.map((e) => ({
           name: e.name,
-          path: path === '' ? e.name : `${path}/${e.name}`,
+          path: reqPath === '' ? e.name : `${reqPath}/${e.name}`,
           kind: e.type,
           size: e.size ?? undefined,
         }));
@@ -186,8 +222,13 @@ export const apiRoutes = [
       tags: ['custom'],
     },
     handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
       const path = c.req.query('path');
       if (!path) return c.json({ error: 'path query param required' }, 400);
+      if (!workspacePathSafe(path)) {
+        return c.json({ error: 'path escapes workspace' }, 403);
+      }
       const fs = ownerWorkspace.filesystem;
       if (!fs) return c.json({ error: 'no filesystem configured' }, 500);
       try {
@@ -199,6 +240,157 @@ export const apiRoutes = [
       } catch (err) {
         return c.json({ error: err instanceof Error ? err.message : 'Gagal membaca file' }, 404);
       }
+    },
+  }),
+  registerApiRoute('/custom/scheduled-prompts', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all active scheduled prompts for the current tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const result = await db.execute({
+        sql: `SELECT id, prompt, interval_sec, cron_expr, next_fire_at,
+                      active, last_fire_at, last_result, created_at
+               FROM scheduled_prompts WHERE tenant_id = ? AND active = 1
+               ORDER BY next_fire_at ASC`,
+        args: [tenantId],
+      });
+      return c.json({
+        prompts: result.rows.map((r) => ({
+          id: Number(r.id),
+          prompt: String(r.prompt),
+          intervalSec: Number(r.interval_sec),
+          cronExpr: String(r.cron_expr),
+          nextFireAt: Number(r.next_fire_at),
+          active: Number(r.active) === 1,
+          lastFireAt: r.last_fire_at != null ? Number(r.last_fire_at) : null,
+          lastResult: r.last_result != null ? String(r.last_result) : null,
+          createdAt: Number(r.created_at),
+        })),
+      });
+    },
+  }),
+  registerApiRoute('/custom/execute-scheduled-prompt', {
+    method: 'POST',
+    openapi: {
+      summary: 'Execute a scheduled prompt through the Juragan agent and send result to Telegram',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const body = (await c.req.json().catch(() => null)) as { scheduledPromptId?: number } | null;
+      if (!body?.scheduledPromptId) {
+        return c.json({ error: 'scheduledPromptId required' }, 400);
+      }
+      const db = getDb();
+      const row = await db.execute({
+        sql: `SELECT id, prompt, cron_expr, interval_sec, active
+               FROM scheduled_prompts WHERE id = ? AND tenant_id = ? AND active = 1`,
+        args: [body.scheduledPromptId, tenantId],
+      });
+      const sched = row.rows[0];
+      if (!sched) {
+        return c.json({ error: 'scheduled prompt not found or inactive' }, 404);
+      }
+
+      // Run the agent
+      const response = await juraganAgent.generate(String(sched.prompt));
+
+      // Send to Telegram
+      const botToken = process.env.TELEGRAM_BOT_TOKEN ?? null;
+      const chatId = process.env.TELEGRAM_OWNER_CHAT_ID ?? null;
+      if (botToken && chatId) {
+        const send = createTelegramSender(botToken);
+        const resultText =
+          typeof response.text === 'string' ? response.text : JSON.stringify(response.text);
+        await send(chatId, `🔄 <b>Scheduled:</b>\n\n${resultText.slice(0, 4000)}`);
+      }
+
+      // Update last_fire_at
+      const now = Date.now();
+      const resultText = typeof response.text === 'string' ? response.text.slice(0, 5000) : '';
+      const schedId = Number(sched.id);
+      await db.execute({
+        sql: 'UPDATE scheduled_prompts SET last_fire_at = ?, last_result = ? WHERE id = ?',
+        args: [now, resultText, schedId],
+      });
+
+      return c.json({ ok: true, response: response.text });
+    },
+  }),
+  registerApiRoute('/custom/whatsapp/status', {
+    method: 'GET',
+    openapi: {
+      summary: 'Get WhatsApp connection status',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const manager = getWhatsAppManager();
+      const status = manager.getStatus();
+      return c.json({
+        connected: status.connected,
+        qr: status.qr,
+      });
+    },
+  }),
+  registerApiRoute('/custom/whatsapp/qr', {
+    method: 'GET',
+    openapi: {
+      summary: 'Get the latest WhatsApp QR code as base64 PNG',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const manager = getWhatsAppManager();
+      const status = manager.getStatus();
+      if (!status.qr) {
+        return c.json({ qr: null, connected: status.connected }, 200);
+      }
+      const base64 = await QRCode.toDataURL(status.qr, { width: 256, margin: 2 });
+      return c.json({ qr: base64, connected: status.connected });
+    },
+  }),
+  registerApiRoute('/custom/whatsapp/connect', {
+    method: 'POST',
+    openapi: {
+      summary: 'Start WhatsApp connection (generates QR code)',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const manager = getWhatsAppManager();
+      try {
+        await manager.connect();
+        return c.json({ ok: true });
+      } catch (err) {
+        return c.json(
+          { ok: false, error: err instanceof Error ? err.message : 'Connection failed' },
+          500,
+        );
+      }
+    },
+  }),
+  registerApiRoute('/custom/whatsapp/disconnect', {
+    method: 'POST',
+    openapi: {
+      summary: 'Disconnect WhatsApp connection',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const manager = getWhatsAppManager();
+      await manager.disconnect();
+      return c.json({ ok: true });
     },
   }),
 ];
