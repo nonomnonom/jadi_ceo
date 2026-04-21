@@ -145,8 +145,7 @@ export function startReminderExecutor(db: Db, tenantId: string): () => void {
       send: send ?? (async () => ({ ok: false, error: 'no sender available' })),
     });
     if (result.dispatched > 0 || result.skipped.length > 0) {
-      // biome-ignore lint/suspicious/noConsoleLog: startup/background logger
-      console.log(
+      console.info(
         `[reminder-tick] checked=${result.checked} dispatched=${result.dispatched} skipped=${result.skipped.length}`,
         result.skipped,
       );

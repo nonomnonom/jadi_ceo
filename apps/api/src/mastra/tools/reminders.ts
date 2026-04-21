@@ -1,3 +1,4 @@
+import { QUEUE_NAMES, type ReminderFireJob, getReminderQueue, reminderJobId } from '@juragan/queue';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import type { Db } from '../../db/client.js';
@@ -12,11 +13,33 @@ const ReminderSchema = z.object({
   createdAt: z.number().int(),
 });
 
+/**
+ * Best-effort enqueue onto BullMQ so the worker delivers at the exact scheduled
+ * time. If Redis is down or misconfigured, swallow the error — the DB row is the
+ * source of truth and the in-process setInterval fallback will still fire it.
+ */
+async function enqueueReminderFire(tenantId: string, reminderId: number, remindAtMs: number) {
+  const queue = getReminderQueue();
+  if (!queue) return;
+  const delay = Math.max(0, remindAtMs - Date.now());
+  const job: ReminderFireJob = { tenantId, reminderId };
+  try {
+    await queue.add(QUEUE_NAMES.REMINDER_FIRE, job, {
+      delay,
+      jobId: reminderJobId(tenantId, reminderId),
+    });
+  } catch (err) {
+    console.warn(
+      `[set-reminder] enqueue failed, will rely on setInterval fallback: ${err instanceof Error ? err.message : err}`,
+    );
+  }
+}
+
 export function createReminderTools({ db, tenantId }: ReminderToolDeps) {
   const setReminder = createTool({
     id: 'set-reminder',
     description:
-      'Buat pengingat untuk owner. Konversi waktu natural language ("besok jam 9", "minggu depan") ke ISO-8601 zona Asia/Jakarta — panggil get-current-time dulu kalau butuh acuan sekarang. Pengingat TIDAK otomatis mengirim notifikasi di versi ini; hanya disimpan agar bisa dilihat lewat list-reminders.',
+      'Buat pengingat untuk owner. Konversi waktu natural language ("besok jam 9", "minggu depan") ke ISO-8601 zona Asia/Jakarta — panggil get-current-time dulu kalau butuh acuan sekarang. Pengingat akan otomatis dikirim ke Telegram owner pada waktu yang dijadwalkan (kalau chat_id sudah di-setup di Settings).',
     inputSchema: z.object({
       content: z.string().min(1).max(500),
       remindAt: z
@@ -36,8 +59,11 @@ export function createReminderTools({ db, tenantId }: ReminderToolDeps) {
       });
       const row = result.rows[0];
       if (!row) throw new Error('Gagal membuat pengingat');
+      const reminderId = Number(row.id);
+      // Don't await failures — enqueue is best-effort (setInterval fallback covers).
+      void enqueueReminderFire(tenantId, reminderId, remindAtMs);
       return {
-        id: Number(row.id),
+        id: reminderId,
         content,
         remindAt: remindAtMs,
         done: false,

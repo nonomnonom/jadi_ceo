@@ -1,0 +1,22 @@
+{
+  "name": "@juragan/queue",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check src",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.75.2",
+    "ioredis": "^5.10.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^20.0.0",
+    "typescript": "5.9.2"
+  }
+}
