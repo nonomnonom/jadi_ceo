@@ -1,7 +1,8 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
-import { getWhatsAppManager, phoneToJid } from '../../../channels/whatsapp-manager.js';
+import { phoneToJid } from '../../../channels/whatsapp-manager.js';
+import { getPluginManager } from '@juragan/core';
 
 export type OrderCommandDeps = { db: Db; tenantId: string };
 
@@ -123,16 +124,14 @@ export function createOrderCommandTools({ db, tenantId }: OrderCommandDeps) {
 
       // Notify customer via WhatsApp
       let customerNotified = false;
-      const manager = getWhatsAppManager();
+      const channel = getPluginManager().getChannelById('whatsapp-channel');
       const customerPhone = String(order.customer_phone);
 
-      if (manager.getStatus().connected) {
+      if (channel && (await channel.adapters.status?.getStatus()) === 'connected') {
         try {
           const jid = phoneToJid(customerPhone);
           const totalFormatted = `Rp ${Number(order.total_idr).toLocaleString('id-ID')}`;
-          await manager.sendMessageToJid(jid, {
-            text: `✅ Pesanan kamu sudah DIKONFIRMASI!\n\nOrder ID: #${orderId}\nProduk: ${order.product_name}\nTotal: ${totalFormatted}\n\nPesanan akan segera diproses. Terima kasih!`,
-          });
+          await channel.adapters.outbound?.sendMessage(jid, `✅ Pesanan kamu sudah DIKONFIRMASI!\n\nOrder ID: #${orderId}\nProduk: ${order.product_name}\nTotal: ${totalFormatted}\n\nPesanan akan segera diproses. Terima kasih!`);
           customerNotified = true;
         } catch (err) {
           console.error('Failed to notify customer:', err);
@@ -205,16 +204,14 @@ export function createOrderCommandTools({ db, tenantId }: OrderCommandDeps) {
 
       // Notify customer via WhatsApp
       let customerNotified = false;
-      const manager = getWhatsAppManager();
+      const channel = getPluginManager().getChannelById('whatsapp-channel');
       const customerPhone = String(order.customer_phone);
 
-      if (manager.getStatus().connected) {
+      if (channel && (await channel.adapters.status?.getStatus()) === 'connected') {
         try {
           const jid = phoneToJid(customerPhone);
           const reasonText = reason ? `\nAlasan: ${reason}` : '';
-          await manager.sendMessageToJid(jid, {
-            text: `❌ Pesanan kamu DITOLAK.\n\nOrder ID: #${orderId}\nProduk: ${order.product_name}${reasonText}\n\nMohon maaf atas ketidaknyamanannya.`,
-          });
+          await channel.adapters.outbound?.sendMessage(jid, `❌ Pesanan kamu DITOLAK.\n\nOrder ID: #${orderId}\nProduk: ${order.product_name}${reasonText}\n\nMohon maaf atas ketidaknyamanannya.`);
           customerNotified = true;
         } catch (err) {
           console.error('Failed to notify customer:', err);

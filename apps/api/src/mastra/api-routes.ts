@@ -2,7 +2,8 @@ import { relative, resolve } from 'node:path';
 import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { registerApiRoute } from '@mastra/core/server';
 import QRCode from 'qrcode';
-import { getWhatsAppManager, phoneToJid } from '../channels/whatsapp-manager.js';
+import { phoneToJid } from '../channels/whatsapp-manager.js';
+import { getPluginManager } from '@juragan/core';
 import { getDb } from '../db/client.js';
 import { type SettingKey, getSetting, maskSecret, setSetting } from '../db/settings.js';
 import { createTelegramSender, tickOnce } from '../reminders/executor.js';
@@ -349,11 +350,16 @@ export const apiRoutes = [
     handler: async (c) => {
       const authed = requireAuth(c);
       if (authed) return authed;
-      const manager = getWhatsAppManager();
-      const status = manager.getStatus();
+      const channel = getPluginManager().getChannelById('whatsapp-channel');
+      if (!channel) {
+        return c.json({ connected: false, qr: null });
+      }
+      const status = await channel.adapters.status?.getStatus();
+      const pairing = channel.adapters.pairing;
+      const qr = pairing?.getQRCode ? await pairing.getQRCode() : null;
       return c.json({
-        connected: status.connected,
-        qr: status.qr,
+        connected: status === 'connected',
+        qr,
       });
     },
   }),
@@ -366,13 +372,18 @@ export const apiRoutes = [
     handler: async (c) => {
       const authed = requireAuth(c);
       if (authed) return authed;
-      const manager = getWhatsAppManager();
-      const status = manager.getStatus();
-      if (!status.qr) {
-        return c.json({ qr: null, connected: status.connected }, 200);
+      const channel = getPluginManager().getChannelById('whatsapp-channel');
+      if (!channel) {
+        return c.json({ qr: null, connected: false });
       }
-      const base64 = await QRCode.toDataURL(status.qr, { width: 256, margin: 2 });
-      return c.json({ qr: base64, connected: status.connected });
+      const status = await channel.adapters.status?.getStatus();
+      const pairing = channel.adapters.pairing;
+      const qr = pairing?.getQRCode ? await pairing.getQRCode() : null;
+      if (!qr) {
+        return c.json({ qr: null, connected: status === 'connected' }, 200);
+      }
+      const base64 = await QRCode.toDataURL(qr, { width: 256, margin: 2 });
+      return c.json({ qr: base64, connected: status === 'connected' });
     },
   }),
   registerApiRoute('/custom/whatsapp/connect', {
@@ -384,9 +395,12 @@ export const apiRoutes = [
     handler: async (c) => {
       const authed = requireAuth(c);
       if (authed) return authed;
-      const manager = getWhatsAppManager();
+      const channel = getPluginManager().getChannelById('whatsapp-channel');
+      if (!channel) {
+        return c.json({ ok: false, error: 'WhatsApp channel not available' }, 500);
+      }
       try {
-        await manager.connect();
+        await channel.adapters.lifecycle?.connect?.();
         return c.json({ ok: true });
       } catch (err) {
         return c.json(
@@ -405,8 +419,10 @@ export const apiRoutes = [
     handler: async (c) => {
       const authed = requireAuth(c);
       if (authed) return authed;
-      const manager = getWhatsAppManager();
-      await manager.disconnect();
+      const channel = getPluginManager().getChannelById('whatsapp-channel');
+      if (channel) {
+        await channel.adapters.lifecycle?.disconnect?.();
+      }
       return c.json({ ok: true });
     },
   }),
@@ -453,10 +469,10 @@ export const apiRoutes = [
           const amountFormatted = body.amount
             ? `Rp ${body.amount.toLocaleString('id-ID')}`
             : '';
-          const manager = getWhatsAppManager();
-          await manager.sendMessageToJid(jid, {
-            text: `✅ Pembayaran berhasil!\n\nOrder ID: ${body.order_id}\nJumlah: ${amountFormatted}\nMetode: ${body.payment_method ?? 'QRIS'}\n\nPesanan kamu akan segera diproses. Terima kasih!`,
-          });
+          const channel = getPluginManager().getChannelById('whatsapp-channel');
+          if (channel?.adapters.outbound) {
+            await channel.adapters.outbound.sendMessage(jid, `✅ Pembayaran berhasil!\n\nOrder ID: ${body.order_id}\nJumlah: ${amountFormatted}\nMetode: ${body.payment_method ?? 'QRIS'}\n\nPesanan kamu akan segera diproses. Terima kasih!`);
+          }
         }
 
         return c.json({ ok: true, status: 'completed' });

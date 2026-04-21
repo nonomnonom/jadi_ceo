@@ -132,6 +132,10 @@ class PluginManagerImpl {
     return [...this.channels];
   }
 
+  getChannelById(id: string): ChannelPlugin | undefined {
+    return this.channels.find((c) => c.id === id);
+  }
+
   getProviders(): ProviderPlugin[] {
     return [...this.providers];
   }
