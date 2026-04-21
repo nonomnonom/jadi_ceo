@@ -26,6 +26,9 @@ importers:
       '@juragan/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@juragan/core-tools':
+        specifier: workspace:*
+        version: link:../../plugins/core-tools
       '@juragan/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -210,6 +213,24 @@ importers:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
+
+  plugins/core-tools:
+    dependencies:
+      '@juragan/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      '@juragan/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+
+  plugins/whatsapp-channel:
+    dependencies:
+      '@juragan/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      baileys:
+        specifier: 7.0.0-rc.9
+        version: 7.0.0-rc.9(sharp@0.34.5)
 
 packages:
 
