@@ -23,3 +23,14 @@ export {
   prepareAcpThreadBinding,
   type SpawnAcpResult,
 } from './acp/spawn.js';
+export {
+  AgentConfigSchema,
+  resolveAgentWorkspace,
+  resolveAgentConfigPath,
+  loadAgentConfig,
+  resolveAgentConfig,
+  resolveAgentSkills,
+  resolveAgentTools,
+  clearAgentConfigCache,
+  type AgentConfig,
+} from './acp/agent-config.js';
