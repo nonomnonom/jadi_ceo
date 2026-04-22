@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { authHeaders } from '../lib/api.ts';
+import { authHeaders, getWhatsAppStatus } from '../lib/api.ts';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Overview', icon: '📊' },
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<number | null>(null);
+  const [waConnected, setWaConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch('/custom/dashboard/stats', { headers: authHeaders() })
@@ -28,6 +29,9 @@ export function DashboardLayout() {
         if (d) setPendingApprovals(d.pendingApprovals);
       })
       .catch(() => {});
+    getWhatsAppStatus()
+      .then((s) => setWaConnected(s.connected))
+      .catch(() => setWaConnected(false));
   }, []);
 
   const navItems = NAV_ITEMS.map((item) =>
@@ -65,7 +69,25 @@ export function DashboardLayout() {
         }`}
       >
         <div className="p-4">
-          <h2 className="mb-6 text-xl font-semibold text-white">Juragan</h2>
+          <h2 className="mb-4 text-xl font-semibold text-white">Juragan</h2>
+          <div className="mb-4 flex items-center gap-2 text-xs text-stone-400">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                waConnected === null
+                  ? 'bg-stone-500 animate-pulse'
+                  : waConnected
+                  ? 'bg-emerald-500'
+                  : 'bg-rose-500'
+              }`}
+            />
+            <span>
+              {waConnected === null
+                ? 'Checking…'
+                : waConnected
+                ? 'WhatsApp connected'
+                : 'WhatsApp offline'}
+            </span>
+          </div>
           <nav className="space-y-1">
             {navItems.map((item) => (
               <NavLink

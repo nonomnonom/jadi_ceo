@@ -173,6 +173,17 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
   return (await res.json()) as TelegramStatus;
 }
 
+export type WhatsAppStatus = {
+  connected: boolean;
+  qr: string | null;
+};
+
+export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
+  const res = await fetch('/custom/whatsapp/status', { headers: authHeaders() });
+  if (!res.ok) throw new Error(`whatsapp status: ${res.status}`);
+  return (await res.json()) as WhatsAppStatus;
+}
+
 // ---- Dashboard stats ----
 
 export type DashboardStats = {
