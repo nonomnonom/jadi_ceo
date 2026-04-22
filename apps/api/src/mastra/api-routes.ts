@@ -676,6 +676,67 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/products', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all products for the tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10), 500);
+      const result = await db.execute({
+        sql: `SELECT id, name, sku, price_idr, stock_qty, low_stock_at, created_at, updated_at
+              FROM products WHERE tenant_id = ? ORDER BY name ASC LIMIT ?`,
+        args: [tenantId, limit],
+      });
+      return c.json({
+        products: result.rows.map((r) => ({
+          id: Number(r.id),
+          name: String(r.name),
+          sku: r.sku ? String(r.sku) : null,
+          priceIdr: Number(r.price_idr),
+          priceFormatted: `Rp ${Number(r.price_idr).toLocaleString('id-ID')}`,
+          stockQty: Number(r.stock_qty),
+          lowStockAt: Number(r.low_stock_at),
+          isLowStock: Number(r.stock_qty) <= Number(r.low_stock_at) && Number(r.low_stock_at) > 0,
+          createdAt: Number(r.created_at),
+          updatedAt: Number(r.updated_at),
+        })),
+      });
+    },
+  }),
+  registerApiRoute('/custom/customers', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all customer contacts for the tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10), 500);
+      const result = await db.execute({
+        sql: `SELECT id, name, phone, email, notes, created_at, updated_at
+              FROM contacts WHERE tenant_id = ? AND type = 'customer' ORDER BY name ASC LIMIT ?`,
+        args: [tenantId, limit],
+      });
+      return c.json({
+        customers: result.rows.map((r) => ({
+          id: Number(r.id),
+          name: String(r.name),
+          phone: r.phone ? String(r.phone) : null,
+          email: r.email ? String(r.email) : null,
+          notes: r.notes ? String(r.notes) : null,
+          createdAt: Number(r.created_at),
+          updatedAt: Number(r.updated_at),
+        })),
+      });
+    },
+  }),
   registerApiRoute('/custom/dashboard/stats', {
     method: 'GET',
     openapi: {

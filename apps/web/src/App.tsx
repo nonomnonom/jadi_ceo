@@ -6,6 +6,7 @@ import { ChannelStatus } from './components/ChannelStatus.tsx';
 import { AgentToggle } from './components/AgentToggle.tsx';
 import { OrdersTable } from './components/OrdersTable.tsx';
 import { ProductsTable } from './components/ProductsTable.tsx';
+import { CustomersTable } from './components/CustomersTable.tsx';
 import { ConversationsViewer } from './components/ConversationsViewer.tsx';
 import { Login } from './routes/login.tsx';
 import { DashboardLayout } from './routes/_dashboard.tsx';
@@ -37,6 +38,7 @@ export function App() {
           } />
           <Route path="orders" element={<OrdersTable />} />
           <Route path="products" element={<ProductsTable />} />
+          <Route path="customers" element={<CustomersTable />} />
           <Route path="workspace" element={<Workspace />} />
           <Route path="settings" element={<Settings />} />
         </Route>
