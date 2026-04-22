@@ -10,6 +10,7 @@ import { CustomersTable } from './components/CustomersTable.tsx';
 import { InvoicesTable } from './components/InvoicesTable.tsx';
 import { TransactionsTable } from './components/TransactionsTable.tsx';
 import { RemindersTable } from './components/RemindersTable.tsx';
+import { AuditLogTable } from './components/AuditLogTable.tsx';
 import { ConversationsViewer } from './components/ConversationsViewer.tsx';
 import { Login } from './routes/login.tsx';
 import { DashboardLayout } from './routes/_dashboard.tsx';
@@ -45,6 +46,7 @@ export function App() {
           <Route path="invoices" element={<InvoicesTable />} />
           <Route path="transactions" element={<TransactionsTable />} />
           <Route path="reminders" element={<RemindersTable />} />
+          <Route path="audit-logs" element={<AuditLogTable />} />
           <Route path="workspace" element={<Workspace />} />
           <Route path="settings" element={<Settings />} />
         </Route>

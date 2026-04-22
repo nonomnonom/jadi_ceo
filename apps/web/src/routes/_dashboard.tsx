@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/channels', label: 'Channels', icon: '📱' },
   { to: '/workspace', label: 'Workspace', icon: '📁' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
+  { to: '/audit-logs', label: 'Audit Logs', icon: '📋' },
 ];
 
 export function DashboardLayout() {
