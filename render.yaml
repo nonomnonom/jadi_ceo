@@ -1,0 +1,42 @@
+# Render.com Blueprint — Juragan
+# One-click deploy: https://render.com/blueprints
+
+services:
+  - type: web
+    name: juragan-api
+    plan: starter
+    env: docker
+    dockerfilePath: Dockerfile
+    targetPort: 4111
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4111
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_OWNER_CHAT_ID
+        sync: false
+      - key: DASHBOARD_SECRET
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: juragan-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: juragan-redis
+          type: redis
+          envVarKey: REDIS_URL
+
+  - type: redis
+    name: juragan-redis
+    plan: starter
+
+databases:
+  - name: juragan-db
+    plan: starter
+    databaseName: juragan

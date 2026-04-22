@@ -1,0 +1,29 @@
+[build]
+  builder = "heroku/docker"
+  dockerfile = "Dockerfile"
+  args = ["TARGET=production"]
+
+[deploy]
+  release_command = "node apps/api/dist/migrate.js"
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls"]
+    port = 443
+
+  [[services.http_checks]]
+    path = "/health"
+    interval_seconds = 30
+    timeout_seconds = 5
+    failure_threshold = 3
