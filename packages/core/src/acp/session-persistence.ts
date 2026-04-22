@@ -205,3 +205,91 @@ export async function pruneOldSessions(
   });
   return (result as unknown as { rowsAffected: number }).rowsAffected ?? 0;
 }
+
+/** Get full transcript for a session, ordered by seq */
+export async function getTranscript(
+  db: { execute: (op: { sql: string; args?: unknown[] }) => Promise<unknown> },
+  sessionKey: string,
+): Promise<AcpTranscriptEntry[]> {
+  const result = await db.execute({
+    sql: 'SELECT id, session_key, seq, type, content, created_at FROM acp_transcripts WHERE session_key = ? ORDER BY seq ASC',
+    args: [sessionKey],
+  });
+  type Row = [number, string, number, string, string | null, number];
+  const rows = result as unknown as Row[][];
+  return (rows[0] ?? []).map((row) => ({
+    id: row[0],
+    sessionKey: row[1],
+    seq: row[2],
+    type: row[3] as 'delta' | 'done' | 'error',
+    content: row[4] ?? null,
+    createdAt: row[5],
+  }));
+}
+
+/**
+ * Get a slice of transcript entries for a session.
+ * Used for context window management — truncate old entries while preserving recent ones.
+ *
+ * @param sessionKey - the session to get transcript for
+ * @param startSeq - starting sequence number (0 = oldest, default 0)
+ * @param limit - max entries to return (default 100)
+ * @returns transcript entries with seq numbers
+ */
+export async function getTranscriptSlice(
+  db: { execute: (op: { sql: string; args?: unknown[] }) => Promise<unknown> },
+  sessionKey: string,
+  opts: { startSeq?: number; limit?: number } = {},
+): Promise<AcpTranscriptEntry[]> {
+  const start = opts.startSeq ?? 0;
+  const limit = opts.limit ?? 100;
+  const result = await db.execute({
+    sql: 'SELECT id, session_key, seq, type, content, created_at FROM acp_transcripts WHERE session_key = ? AND seq >= ? ORDER BY seq ASC LIMIT ?',
+    args: [sessionKey, start, limit],
+  });
+  type Row = [number, string, number, string, string | null, number];
+  const rows = result as unknown as Row[][];
+  return (rows[0] ?? []).map((row) => ({
+    id: row[0],
+    sessionKey: row[1],
+    seq: row[2],
+    type: row[3] as 'delta' | 'done' | 'error',
+    content: row[4] ?? null,
+    createdAt: row[5],
+  }));
+}
+
+/**
+ * Summarize a transcript by collapsing consecutive delta entries into a single entry.
+ * Used for truncating long transcripts before sending to the LLM.
+ */
+export function summarizeTranscript(
+  entries: AcpTranscriptEntry[],
+  maxEntries: number,
+): AcpTranscriptEntry[] {
+  if (entries.length <= maxEntries) return entries;
+
+  // Keep first and last entries, collapse middle
+  const kept: AcpTranscriptEntry[] = [];
+  const skipped = entries.length - maxEntries;
+
+  // Always keep first entry
+  kept.push(entries[0]!);
+
+  // Add a summary entry indicating truncation
+  if (skipped > 0) {
+    kept.push({
+      id: -1,
+      sessionKey: entries[0]!.sessionKey,
+      seq: entries[0]!.seq + 1,
+      type: 'done',
+      content: `[${skipped} earlier entries truncated]`,
+      createdAt: entries[0]!.createdAt,
+    });
+  }
+
+  // Keep last entry
+  kept.push(entries[entries.length - 1]!);
+
+  return kept;
+}

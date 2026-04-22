@@ -53,6 +53,9 @@ export type {
   CommandResult,
   PluginEntryPoint,
   EventHandler,
+  MemoryPlugin,
+  MemoryType,
+  MemoryEntry,
 } from './types.js';
 
 // Schemas

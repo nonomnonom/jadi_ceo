@@ -285,6 +285,42 @@ export const SkillManifestSchema = z.object({
 export { z };
 
 /**
+ * Memory plugin type — registered via api.registerSkill() or as a standalone plugin.
+ * Provides swappable memory backends for the agent's context management.
+ */
+export interface MemoryPlugin {
+  id: string;
+  meta: {
+    name: string;
+    description?: string;
+  };
+
+  // Memory operations
+  addMemory(type: MemoryType, content: string, importance?: number): Promise<number>;
+  getMemory(id: number): Promise<MemoryEntry | null>;
+  searchMemory(query: string, limit?: number): Promise<MemoryEntry[]>;
+  updateMemory(id: number, updates: Partial<MemoryEntry>): Promise<boolean>;
+  deleteMemory(id: number): Promise<boolean>;
+
+  // Lifecycle
+  compact?(): Promise<void>; // called during dream consolidation
+  clear?(): Promise<void>;   // clear all memories for tenant
+}
+
+export type MemoryType = 'note' | 'fact' | 'preference' | 'context';
+
+export interface MemoryEntry {
+  id: number;
+  tenantId: string;
+  type: MemoryType;
+  content: string;
+  importance: number;
+  lastAccessedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
  * Plugin entry point signature.
  * All Juragan plugins must export a default function matching this signature.
  */
