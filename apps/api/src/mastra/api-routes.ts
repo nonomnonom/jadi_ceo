@@ -804,6 +804,33 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/reminders', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all reminders for the tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10), 500);
+      const result = await db.execute({
+        sql: `SELECT id, content, remind_at, done, created_at
+              FROM reminders WHERE tenant_id = ? ORDER BY remind_at ASC LIMIT ?`,
+        args: [tenantId, limit],
+      });
+      return c.json({
+        reminders: result.rows.map((r) => ({
+          id: Number(r.id),
+          content: String(r.content),
+          remindAt: Number(r.remind_at),
+          done: Boolean(r.done),
+          createdAt: Number(r.created_at),
+        })),
+      });
+    },
+  }),
   registerApiRoute('/custom/dashboard/stats', {
     method: 'GET',
     openapi: {
