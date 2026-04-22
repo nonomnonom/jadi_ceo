@@ -68,3 +68,11 @@ export {
   type ApprovalHandler,
   type ConfirmationRegistry,
 } from './confirmation-registry.js';
+export {
+  getWorkflowEventBus,
+  resetWorkflowEventBus,
+  emitWorkflowEvent,
+  type WorkflowEvent,
+  type WorkflowEventType,
+  type EventHandler,
+} from './workflow/event-bus.js';

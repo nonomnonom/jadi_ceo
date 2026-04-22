@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
 import { createRequestCancelTool } from './request-cancel.js';
 import { createShippingTools } from './track-shipping.js';
+import { emitWorkflowEvent } from '@juragan/core';
 
 export type CustomerToolDeps = { db: Db; tenantId: string };
 
@@ -80,6 +81,16 @@ export function createCustomerTools({ db, tenantId }: CustomerToolDeps) {
       const insertedRow = insertResult.rows[0];
       if (!insertedRow) throw new Error('Gagal membuat pesanan');
       const orderId = Number(insertedRow.id);
+
+      // Emit order.created event for workflow triggers
+      await emitWorkflowEvent('order.created', tenantId, {
+        orderId,
+        customerPhone,
+        productId,
+        qty,
+        totalIdr,
+      });
+
       return { orderId, status: 'pending' as const, totalIdr, createdAt: now };
     },
   });

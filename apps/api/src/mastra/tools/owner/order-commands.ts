@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import type { Db } from '../../../db/client.js';
 import { phoneToJid } from '../../../channels/whatsapp-manager.js';
-import { getPluginManager } from '@juragan/core';
+import { getPluginManager, emitWorkflowEvent } from '@juragan/core';
 
 export type OrderCommandDeps = { db: Db; tenantId: string };
 
@@ -122,6 +122,13 @@ export function createOrderCommandTools({ db, tenantId }: OrderCommandDeps) {
         args: [tenantId, orderId, 'pending', 'approved', 'owner', now],
       });
 
+      // Emit order.approved event for workflow triggers
+      await emitWorkflowEvent('order.approved', tenantId, {
+        orderId,
+        customerPhone: String(order.customer_phone),
+        totalIdr: Number(order.total_idr),
+      });
+
       // Notify customer via WhatsApp
       let customerNotified = false;
       const channel = getPluginManager().getChannelById('whatsapp-channel');
@@ -200,6 +207,13 @@ export function createOrderCommandTools({ db, tenantId }: OrderCommandDeps) {
         sql: `INSERT INTO order_status_history (tenant_id, order_id, old_status, new_status, changed_by, note, created_at)
               VALUES (?, ?, ?, ?, ?, ?, ?)`,
         args: [tenantId, orderId, 'pending', 'rejected', 'owner', reason ?? null, now],
+      });
+
+      // Emit order.rejected event for workflow triggers
+      await emitWorkflowEvent('order.rejected', tenantId, {
+        orderId,
+        customerPhone: String(order.customer_phone),
+        reason: reason ?? undefined,
       });
 
       // Notify customer via WhatsApp

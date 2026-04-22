@@ -5,6 +5,7 @@ import type { Db } from '../../../db/client.js';
 import { getSetting } from '../../../db/settings.js';
 import { RajaongkirService } from '../../../services/rajaongkir.js';
 import { PakasirService } from '../../../services/pakasir.js';
+import { emitWorkflowEvent } from '@juragan/core';
 
 export type InvoiceOrderDeps = { db: Db; tenantId: string };
 
@@ -104,6 +105,16 @@ export function createInvoiceOrderTool({ db, tenantId }: InvoiceOrderDeps) {
 
       const orderRow = orderResult.rows[0]!;
       const orderId = Number(orderRow.id);
+
+      // Emit order.created event for workflow triggers
+      await emitWorkflowEvent('order.created', tenantId, {
+        orderId,
+        customerPhone,
+        productId,
+        qty,
+        totalAmount,
+        autoApproved: shouldAutoApprove,
+      });
 
       // 5. If auto-approved, request payment
       let paymentRequest = null;
