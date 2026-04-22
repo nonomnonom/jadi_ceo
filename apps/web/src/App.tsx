@@ -8,6 +8,7 @@ import { OrdersTable } from './components/OrdersTable.tsx';
 import { ProductsTable } from './components/ProductsTable.tsx';
 import { CustomersTable } from './components/CustomersTable.tsx';
 import { InvoicesTable } from './components/InvoicesTable.tsx';
+import { TransactionsTable } from './components/TransactionsTable.tsx';
 import { ConversationsViewer } from './components/ConversationsViewer.tsx';
 import { Login } from './routes/login.tsx';
 import { DashboardLayout } from './routes/_dashboard.tsx';
@@ -41,6 +42,7 @@ export function App() {
           <Route path="products" element={<ProductsTable />} />
           <Route path="customers" element={<CustomersTable />} />
           <Route path="invoices" element={<InvoicesTable />} />
+          <Route path="transactions" element={<TransactionsTable />} />
           <Route path="workspace" element={<Workspace />} />
           <Route path="settings" element={<Settings />} />
         </Route>

@@ -773,6 +773,37 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/transactions', {
+    method: 'GET',
+    openapi: {
+      summary: 'List income/expense transactions for the tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const kind = c.req.query('kind');
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10), 500);
+      const sql = kind
+        ? `SELECT id, kind, amount_idr, description, occurred_at, created_at
+           FROM transactions WHERE tenant_id = ? AND kind = ? ORDER BY occurred_at DESC LIMIT ?`
+        : `SELECT id, kind, amount_idr, description, occurred_at, created_at
+           FROM transactions WHERE tenant_id = ? ORDER BY occurred_at DESC LIMIT ?`;
+      const args = kind ? [tenantId, kind, limit] : [tenantId, limit];
+      const result = await db.execute({ sql, args });
+      return c.json({
+        transactions: result.rows.map((r) => ({
+          id: Number(r.id),
+          kind: String(r.kind),
+          amountIdr: Number(r.amount_idr),
+          description: r.description ? String(r.description) : null,
+          occurredAt: Number(r.occurred_at),
+          createdAt: Number(r.created_at),
+        })),
+      });
+    },
+  }),
   registerApiRoute('/custom/dashboard/stats', {
     method: 'GET',
     openapi: {

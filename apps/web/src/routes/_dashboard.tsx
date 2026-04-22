@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/products', label: 'Products', icon: '📦' },
   { to: '/customers', label: 'Customers', icon: '👥' },
   { to: '/invoices', label: 'Invoices', icon: '📄' },
+  { to: '/transactions', label: 'Transactions', icon: '💰' },
   { to: '/channels', label: 'Channels', icon: '📱' },
   { to: '/workspace', label: 'Workspace', icon: '📁' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
