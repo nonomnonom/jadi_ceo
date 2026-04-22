@@ -49,3 +49,22 @@ export {
   type AcpSessionRecord,
   type AcpTranscriptEntry,
 } from './acp/session-persistence.js';
+export {
+  createAuditLogger,
+  type AuditLogEntry,
+  type AuditLogger,
+  type AuditLogRecord,
+  type AuditLogResult,
+  type AuditAction,
+  type AuditActor,
+  type AuditStatus,
+  type AuditChannel,
+} from './audit-logger.js';
+export {
+  getConfirmationRegistry,
+  resetConfirmationRegistry,
+  type PendingApproval,
+  type ApprovalResult,
+  type ApprovalHandler,
+  type ConfirmationRegistry,
+} from './confirmation-registry.js';

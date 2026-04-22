@@ -15,7 +15,8 @@ export type SettingKey =
   | 'vacationMode'
   | 'vacationStart'
   | 'vacationEnd'
-  | 'vacationMessage';
+  | 'vacationMessage'
+  | 'trustedTools';
 
 export async function getSetting(
   db: Db,

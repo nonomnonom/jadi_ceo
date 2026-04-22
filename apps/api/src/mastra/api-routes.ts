@@ -966,4 +966,41 @@ export const apiRoutes = [
       }
     },
   }),
+  registerApiRoute('/custom/audit-logs', {
+    method: 'GET',
+    openapi: {
+      summary: 'Query audit log entries for the current tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const toolId = c.req.query('toolId') as string | undefined;
+      const status = c.req.query('status') as 'success' | 'error' | 'rejected' | 'timeout' | 'pending' | undefined;
+      const from = c.req.query('from') ? parseInt(c.req.query('from') as string, 10) : undefined;
+      const to = c.req.query('to') ? parseInt(c.req.query('to') as string, 10) : undefined;
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 200);
+      const offset = parseInt(c.req.query('offset') ?? '0', 10);
+      const db = getDb();
+      const { createAuditLogger } = await import('@juragan/core');
+      const logger = createAuditLogger(db, tenantId);
+      const result = await logger.query({ tenantId, toolId, status, from, to, limit, offset });
+      return c.json({
+        records: result.records.map((r) => ({
+          id: r.id,
+          toolId: r.toolId,
+          toolName: r.toolName,
+          action: r.action,
+          actor: r.actor,
+          input: r.input,
+          result: r.result,
+          status: r.status,
+          channel: r.channel,
+          conversationId: r.conversationId,
+          createdAt: r.createdAt,
+        })),
+        total: result.total,
+      });
+    },
+  }),
 ];

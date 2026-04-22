@@ -229,6 +229,26 @@ const DDL = [
    )`,
   `CREATE INDEX IF NOT EXISTS idx_order_status_history_order
      ON order_status_history (tenant_id, order_id, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS audit_logs (
+     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+     tenant_id    TEXT    NOT NULL,
+     tool_id      TEXT    NOT NULL,
+     tool_name    TEXT    NOT NULL,
+     action       TEXT    NOT NULL CHECK (action IN ('execute','approve','reject')),
+     actor        TEXT    NOT NULL CHECK (actor IN ('owner','customer','agent','system')),
+     input_json   TEXT,
+     result_json  TEXT,
+     status       TEXT    NOT NULL CHECK (status IN ('success','error','rejected','timeout','pending')),
+     channel      TEXT    NOT NULL CHECK (channel IN ('telegram','whatsapp','api','system')),
+     conversation_id TEXT,
+     created_at   INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant
+     ON audit_logs (tenant_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_logs_tool
+     ON audit_logs (tool_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_logs_status
+     ON audit_logs (tenant_id, status, created_at DESC)`,
 ];
 
 export async function initSchema(db: Db): Promise<void> {
