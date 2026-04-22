@@ -1,5 +1,5 @@
 import type { Db } from '../db/client.js';
-import { lightDream, remDream, deepDream, DEFAULT_DREAM_CONFIG, isNearDreamTime } from '../memory/drawing.js';
+import { remDream, deepDream, DEFAULT_DREAM_CONFIG, isNearDreamTime } from '../memory/drawing.js';
 
 export type DreamSchedulerDeps = {
   db: Db;
@@ -18,7 +18,7 @@ const DEEP_DREAM_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
  * Returns a stop function.
  */
 export function startDreamScheduler(deps: DreamSchedulerDeps): () => void {
-  const { db, tenantId, config = {}, now = Date.now } = deps;
+  const { db, tenantId, config = {} } = deps;
   const enabled = config.enabled ?? DEFAULT_DREAM_CONFIG.enabled;
 
   if (!enabled) {

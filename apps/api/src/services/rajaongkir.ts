@@ -58,7 +58,7 @@ export class RajaongkirService {
   async getProvinces(): Promise<Province[]> {
     // Check cache first
     const cached = await this.getCached('provinces');
-    if (cached) return cached;
+    if (cached) return cached as Province[];
 
     const apiKey = await this.getApiKey();
     const response = await fetch(`${this.baseUrl}/province`, {
@@ -89,7 +89,7 @@ export class RajaongkirService {
   async getCities(provinceId?: string): Promise<City[]> {
     const cacheKey = provinceId ? `cities_${provinceId}` : 'cities';
     const cached = await this.getCached(cacheKey);
-    if (cached) return cached;
+    if (cached) return cached as City[];
 
     const apiKey = await this.getApiKey();
     const url = provinceId

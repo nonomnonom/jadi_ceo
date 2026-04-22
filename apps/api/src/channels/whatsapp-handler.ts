@@ -22,10 +22,6 @@ function extractQrImage(text: string): { caption: string; imageData: string } | 
   return { caption, imageData };
 }
 
-function _formatIDR(n: number): string {
-  return `Rp ${n.toLocaleString('id-ID', { minimumFractionDigits: 0 })}`;
-}
-
 export function createWhatsAppHandler(sock: WASocket): void {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
@@ -55,13 +51,14 @@ export function createWhatsAppHandler(sock: WASocket): void {
       }
 
       // Log inbound
-      await logConversation.execute({
+      const logResult = await logConversation.execute({
         channel: 'whatsapp',
         customerPhone: phone,
         direction: 'inbound',
         message: textContent,
         messageId: msg.key.id ?? undefined,
-      });
+      }, {});
+      void logResult;
 
       if (!autoReplyEnabled) {
         // Notify owner via Telegram instead of auto-replying
@@ -86,7 +83,7 @@ export function createWhatsAppHandler(sock: WASocket): void {
           direction: 'outbound',
           message: vacationStatus.message,
           messageId: undefined,
-        });
+        }, {});
         continue;
       }
 
@@ -113,7 +110,7 @@ export function createWhatsAppHandler(sock: WASocket): void {
           direction: 'outbound',
           message: offlineMessage,
           messageId: undefined,
-        });
+        }, {});
         continue;
       }
 
@@ -150,7 +147,7 @@ export function createWhatsAppHandler(sock: WASocket): void {
         direction: 'outbound',
         message: replyText,
         messageId: undefined,
-      });
+      }, {});
     }
   });
 }

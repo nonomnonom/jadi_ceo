@@ -66,7 +66,7 @@ export function createInvoiceOrderTool({ db, tenantId }: InvoiceOrderDeps) {
           origin: originCityId,
           destination: destinationCityId,
           weight: qty * 1000, // 1kg per item
-          courier,
+          courier: courier ?? 'jne',
         });
         if (shippingCosts.length > 0) {
           // Pick the cheapest option

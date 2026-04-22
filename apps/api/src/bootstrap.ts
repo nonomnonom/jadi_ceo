@@ -52,4 +52,4 @@ for (const plugin of discovered) {
 await manager.discoverSkills(join(process.cwd(), 'skills'));
 
 // Start the dreaming scheduler for memory consolidation
-const _stopDreamScheduler = startDreamScheduler({ db, tenantId });
+startDreamScheduler({ db, tenantId });

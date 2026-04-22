@@ -771,7 +771,7 @@ export const apiRoutes = [
       const result = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now - i * 24 * 60 * 60 * 1000);
-        const dayStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dayStr = d.toISOString().split('T')[0]!; // YYYY-MM-DD
         const entry = byDay[dayStr] ?? { income: 0, expense: 0 };
         result.push({
           day: dayStr,

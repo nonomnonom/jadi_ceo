@@ -15,12 +15,6 @@ export const DEFAULT_DREAM_CONFIG: DreamConfig = {
   deepDreamHourWib: 0, // midnight WIB
 };
 
-interface SessionNote {
-  id: number;
-  content: string;
-  created_at: number;
-}
-
 /**
  * Light Dream — process session notes into memory after each conversation.
  * Called at the end of each session or after significant interactions.
@@ -99,9 +93,10 @@ export async function remDream(
         // Keep the most important, update others to note type and lower importance
         const sorted = group.sort((a, b) => b.importance - a.importance);
         for (let i = 1; i < sorted.length; i++) {
-          await store.updateMemory(sorted[i].id, {
+          const entry = sorted[i]!;
+          await store.updateMemory(entry.id, {
             type: 'note',
-            importance: Math.max(1, sorted[i].importance - 1),
+            importance: Math.max(1, entry.importance - 1),
           });
           consolidated++;
         }
@@ -125,7 +120,6 @@ export async function deepDream(
   totalMemories: number;
 }> {
   const store = createMemoryStore({ db, tenantId });
-  const stats = await store.getMemoryStats();
   const promoteThreshold = options?.promoteThreshold ?? 3;
   const deleteThreshold = options?.deleteThreshold ?? 1;
 

@@ -41,7 +41,7 @@ export function createMemoryStore({ db, tenantId }: { db: Db; tenantId: string }
       args: [id, tenantId],
     });
     if (result.rows.length === 0) return null;
-    const r = result.rows[0];
+    const r = result.rows[0]!;
     return {
       id: Number(r.id),
       tenantId: String(r.tenant_id),
