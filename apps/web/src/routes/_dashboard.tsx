@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/workspace', label: 'Workspace', icon: '📁' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
   { to: '/audit-logs', label: 'Audit Logs', icon: '📋' },
+  { to: '/workflows', label: 'Workflows', icon: '🔄' },
 ];
 
 export function DashboardLayout() {
