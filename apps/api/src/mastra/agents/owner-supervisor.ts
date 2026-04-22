@@ -1,4 +1,3 @@
-import { createTelegramAdapter } from '@chat-adapter/telegram';
 import { DEFAULT_TENANT_ID as tenantId } from '@juragan/shared';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
@@ -283,18 +282,4 @@ export const ownerSupervisor = new Agent({
       lastMessages: 20,
     },
   }),
-  ...(process.env.TELEGRAM_BOT_TOKEN
-    ? {
-        channels: {
-          adapters: {
-            telegram: createTelegramAdapter({
-              mode: 'auto' as const,
-              longPolling: {
-                dropPendingUpdates: true,
-              },
-            }),
-          },
-        },
-      }
-    : {}),
 });
