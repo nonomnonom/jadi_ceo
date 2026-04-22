@@ -1,0 +1,16 @@
+FROM oven/bun:1-alpine AS production
+
+WORKDIR /app
+
+# Copy dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile --prod
+
+# Copy source
+COPY packages packages
+COPY apps/worker/src apps/worker/src
+
+# Volume mount point
+VOLUME ["/app/data"]
+
+ENTRYPOINT ["bun", "src/index.ts"]

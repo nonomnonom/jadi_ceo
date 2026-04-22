@@ -1,0 +1,11 @@
+node_modules
+.git
+.github
+apps/web/dist
+apps/worker/dist
+*.log
+*.tmp
+.env
+.env.*
+!.env.example
+!.env.production.example
