@@ -17,6 +17,14 @@ const NAV_ITEMS = [
   { to: '/workflows', label: 'Workflows', icon: '🔄' },
 ];
 
+const BOTTOM_NAV = [
+  { to: '/dashboard', label: 'Overview', icon: '📊' },
+  { to: '/orders', label: 'Orders', icon: '📦' },
+  { to: '/products', label: 'Products', icon: '📦' },
+  { to: '/customers', label: 'Customers', icon: '👥' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
+];
+
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<number | null>(null);
@@ -141,11 +149,31 @@ export function DashboardLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="lg:pl-64">
+      <main className="lg:pl-64 pb-20 lg:pb-0">
         <div className="mx-auto max-w-5xl p-4 md:p-8">
           <Outlet />
         </div>
       </main>
+
+      {/* Mobile bottom navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-stone-200 bg-white lg:hidden">
+        {BOTTOM_NAV.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 px-3 py-2 text-xs transition ${
+                isActive
+                  ? 'text-stone-900'
+                  : 'text-stone-400 hover:text-stone-600'
+              }`
+            }
+          >
+            <span className="text-lg">{item.icon}</span>
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
