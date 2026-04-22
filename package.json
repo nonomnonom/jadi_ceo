@@ -8,8 +8,10 @@
     "dev": "turbo run dev",
     "test": "turbo run test",
     "lint": "turbo run lint",
+    "check": "pnpm check-types && pnpm lint",
     "check-types": "turbo run check-types",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "format:check": "biome format --check ."
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

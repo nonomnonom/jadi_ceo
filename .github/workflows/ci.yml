@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   ci:
-    name: Type check, lint, test
+    name: Type check, lint, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -39,5 +39,33 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Build
+        run: pnpm build
+
       - name: Test
         run: pnpm test
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.juragan.example.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build and deploy
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          # Deploy to Fly.io staging (placeholder)
+          fly deploy --app juragan-staging --dockerfile Dockerfile
