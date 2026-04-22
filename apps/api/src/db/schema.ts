@@ -249,6 +249,21 @@ const DDL = [
      ON audit_logs (tool_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_audit_logs_status
      ON audit_logs (tenant_id, status, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS workflow_versions (
+     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+     workflow_id  TEXT    NOT NULL,
+     version      INTEGER NOT NULL,
+     name          TEXT    NOT NULL,
+     description  TEXT,
+     trigger_type  TEXT    NOT NULL,
+     trigger_config TEXT,
+     steps_json    TEXT    NOT NULL,
+     definition    TEXT    NOT NULL,
+     created_at    INTEGER NOT NULL,
+     is_active     INTEGER NOT NULL DEFAULT FALSE
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_workflow_versions_id_active
+     ON workflow_versions (workflow_id, is_active)`,
 ];
 
 export async function initSchema(db: Db): Promise<void> {
