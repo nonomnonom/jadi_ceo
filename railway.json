@@ -1,0 +1,41 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "healthcheck": "/health",
+    "port": 4111,
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "services": [
+    {
+      "$name": "juragan-api",
+      "$port": 4111,
+      "$healthcheck": "/health",
+      "$env": {
+        "NODE_ENV": "production",
+        "OPENROUTER_API_KEY": "{{OPENROUTER_API_KEY}}",
+        "TELEGRAM_BOT_TOKEN": "{{TELEGRAM_BOT_TOKEN}}",
+        "TELEGRAM_OWNER_CHAT_ID": "{{TELEGRAM_OWNER_CHAT_ID}}",
+        "DASHBOARD_SECRET": "{{DASHBOARD_SECRET}}"
+      }
+    },
+    {
+      "$name": "juragan-redis",
+      "$port": 6379,
+      "$image": "redis:7-alpine"
+    }
+  ],
+  "databases": [
+    {
+      "$name": "juragan-db",
+      "$engine": "postgres",
+      "$version": "15"
+    }
+  ]
+}
