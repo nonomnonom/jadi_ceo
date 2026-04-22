@@ -1,0 +1,11 @@
+{
+  "name": "@juragan/telegram-channel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@juragan/plugin-sdk": "workspace:*",
+    "@chat-adapter/telegram": "^4.26.0"
+  }
+}
