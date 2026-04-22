@@ -1003,4 +1003,39 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/workflows', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all registered workflows',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      // Return hardcoded workflow list (will be dynamic when workflow registry is fully wired)
+      const workflows = [
+        { id: 'order-approval', name: 'Order Approval Workflow', trigger: 'manual', steps: 3 },
+        { id: 'restock', name: 'Restock Workflow', trigger: 'manual', steps: 4 },
+        { id: 'customer-followup', name: 'Customer Followup Workflow', trigger: 'manual', steps: 4 },
+      ];
+      return c.json({ workflows });
+    },
+  }),
+  registerApiRoute('/custom/workflows/:id/trigger', {
+    method: 'POST',
+    openapi: {
+      summary: 'Trigger a workflow by ID',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const workflowId = c.req.query('id') as string;
+      const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+      if (!workflowId) return c.json({ error: 'workflow id required' }, 400);
+      // Return success — actual execution depends on workflow engine being wired
+      console.info(`[workflow] triggered ${workflowId} with data:`, body);
+      return c.json({ ok: true, workflowId, triggeredAt: Date.now() });
+    },
+  }),
 ];
