@@ -155,6 +155,23 @@ export interface ChannelOutboundAdapter {
 
 export interface ChannelStatusAdapter {
   getStatus(): Promise<ChannelStatus>;
+  /** Probe the connection — returns detailed diagnostics */
+  probe?(): Promise<ChannelProbeResult>;
+  /** Audit recent events — returns last N events for debugging */
+  audit?(events?: number): Promise<ChannelAuditEntry[]>;
+}
+
+export interface ChannelProbeResult {
+  ok: boolean;
+  latencyMs?: number;
+  error?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface ChannelAuditEntry {
+  timestamp: number;
+  event: string;
+  data?: Record<string, unknown>;
 }
 
 export type ChannelStatus = 'connected' | 'disconnected' | 'connecting' | 'error';
