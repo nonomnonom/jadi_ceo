@@ -1,0 +1,91 @@
+import { Outlet, NavLink } from 'react-router-dom';
+import { useState } from 'react';
+
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Overview', icon: '📊' },
+  { to: '/orders', label: 'Orders', icon: '📦' },
+  { to: '/channels', label: 'Channels', icon: '📱' },
+  { to: '/workspace', label: 'Workspace', icon: '📁' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
+];
+
+export function DashboardLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-stone-50">
+      {/* Mobile header */}
+      <header className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-3 lg:hidden">
+        <h1 className="text-lg font-semibold text-stone-900">Juragan</h1>
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="rounded-lg p-2 hover:bg-stone-100"
+        >
+          <svg className="h-5 w-5 text-stone-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </header>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-10 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed bottom-0 left-0 top-0 z-20 w-64 transform overflow-y-auto bg-stone-900 transition-transform lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-4">
+          <h2 className="mb-6 text-xl font-semibold text-white">Juragan</h2>
+          <nav className="space-y-1">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-stone-400 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        {/* Logout button */}
+        <div className="absolute bottom-0 left-0 right-0 border-t border-stone-800 p-4">
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('dashboard_secret');
+              window.location.href = '/login';
+            }}
+            className="w-full rounded-lg px-3 py-2 text-sm font-medium text-stone-400 hover:bg-white/5 hover:text-white"
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="lg:pl-64">
+        <div className="mx-auto max-w-5xl p-4 md:p-8">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+}
