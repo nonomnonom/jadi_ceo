@@ -13,6 +13,7 @@ export {
   type SessionHandle,
   type AgentInput,
   type AgentOutput,
+  type AgentExecutor,
   type DetachedTaskRun,
   type InitializeSessionParams,
   type SpawnParams,

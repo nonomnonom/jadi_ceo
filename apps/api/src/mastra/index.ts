@@ -12,11 +12,33 @@ import { customerAgent } from './agents/customer/index.js';
 import { ownerSupervisor } from './agents/owner-supervisor.js';
 import { apiRoutes } from './api-routes.js';
 import { registerAcpRoutes } from './acp-routes.js';
+import { getAcpSessionManager, type AgentExecutor, type AgentOutput } from '@juragan/core';
 import { orderApprovalWorkflow } from '../workflows/order-approval.js';
 import { restockWorkflow } from '../workflows/restock.js';
 import { customerFollowupWorkflow } from '../workflows/customer-followup.js';
 
 registerAcpRoutes();
+
+// Wire ACP executor to Mastra agents — enables spawn/sub-agent stream relay
+const manager = getAcpSessionManager();
+manager.setExecutor(
+  (async (agentId: string, input): Promise<AsyncGenerator<AgentOutput>> => {
+    const agent = agentId === 'customer' ? customerAgent : ownerSupervisor;
+    const stream = await agent.stream(input.text ?? '', { maxSteps: 50 });
+
+    async function* acpStream(): AsyncGenerator<AgentOutput> {
+      try {
+        for await (const text of stream.textStream) {
+          yield { type: 'delta', delta: text };
+        }
+        yield { type: 'done', text: '' };
+      } catch (err) {
+        yield { type: 'error', error: err instanceof Error ? err.message : String(err) };
+      }
+    }
+    return acpStream();
+  }) as AgentExecutor,
+);
 
 export const mastra = new Mastra({
   storage: new LibSQLStore({

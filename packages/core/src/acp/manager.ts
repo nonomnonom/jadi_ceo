@@ -41,6 +41,12 @@ export interface AgentOutput {
   error?: string;
 }
 
+/** Signature of an agent executor — wires ACP to a real Mastra agent */
+export type AgentExecutor = (
+  agentId: string,
+  input: AgentInput,
+) => Promise<AsyncGenerator<AgentOutput>>;
+
 /** Parameters for initializing a new session */
 export const InitializeSessionSchema = z.object({
   sessionKey: z.string().min(1),
@@ -183,6 +189,7 @@ class AcpSessionManager {
   private runtimeCache = new RuntimeCache();
   private detachedTasks = new Map<string, DetachedTaskRun[]>();
   private db: { execute: (op: { sql: string; args?: unknown[] }) => Promise<unknown> } | null = null;
+  private executor: AgentExecutor | null = null;
 
   static getInstance(): AcpSessionManager {
     if (!AcpSessionManager.instance) {
@@ -194,6 +201,11 @@ class AcpSessionManager {
   /** Wire a LibSQL db instance for persistence (call once at startup) */
   setDb(db: { execute: (op: { sql: string; args?: unknown[] }) => Promise<unknown> }): void {
     this.db = db;
+  }
+
+  /** Wire an agent executor — called by the API layer to connect ACP to Mastra agents */
+  setExecutor(executor: AgentExecutor): void {
+    this.executor = executor;
   }
 
   private getOrCreateQueue(sessionKey: string): SessionActorQueue {
@@ -231,11 +243,12 @@ class AcpSessionManager {
   }
 
   async runTurn(
-    _handle: SessionHandle,
-    _input: AgentInput,
+    handle: SessionHandle,
+    input: AgentInput,
   ): Promise<AsyncGenerator<AgentOutput>> {
-    // Note: actual agent execution would be wired here via the Mastra agent.
-    // This generator pattern supports stream relay from sub-agents.
+    if (this.executor) {
+      return this.executor(handle.agentId, input);
+    }
     async function* generate(): AsyncGenerator<AgentOutput> {
       yield { type: 'done', text: '' };
     }
@@ -247,8 +260,40 @@ class AcpSessionManager {
     input: AgentInput,
   ): Promise<AsyncGenerator<AgentOutput>> {
     const db = this.db;
+
+    // If an executor is wired, use it to run the actual Mastra agent
+    if (this.executor) {
+      const gen = await this.executor(handle.agentId, input);
+      const dbForAppend = db;
+      const sessionKey = handle.sessionKey;
+
+      async function* generateWithExecutor(): AsyncGenerator<AgentOutput> {
+        try {
+          for await (const event of gen) {
+            // The executor already yields typed AgentOutput events.
+            // Just pass them through while appending to transcript for audit.
+            if (dbForAppend && (event.type === 'delta' || event.type === 'done' || event.type === 'error')) {
+              await appendTranscript(dbForAppend, {
+                sessionKey,
+                type: event.type,
+                content: event.type === 'delta' ? event.delta : event.type === 'error' ? event.error : null,
+              });
+            }
+            yield event;
+          }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          if (dbForAppend) {
+            await appendTranscript(dbForAppend, { sessionKey, type: 'error', content: errorMsg });
+          }
+          yield { type: 'error', error: errorMsg };
+        }
+      }
+      return generateWithExecutor();
+    }
+
+    // Fallback: placeholder when no executor is wired
     async function* generate(): AsyncGenerator<AgentOutput> {
-      // Yield a placeholder delta — real implementation would call the Mastra agent here
       if (input.text) {
         if (db) await appendTranscript(db, { sessionKey: handle.sessionKey, type: 'delta', content: input.text });
         yield { type: 'delta', delta: input.text };
