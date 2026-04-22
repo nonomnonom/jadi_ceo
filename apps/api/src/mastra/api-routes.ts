@@ -737,6 +737,42 @@ export const apiRoutes = [
       });
     },
   }),
+  registerApiRoute('/custom/invoices', {
+    method: 'GET',
+    openapi: {
+      summary: 'List all invoices for the tenant',
+      tags: ['custom'],
+    },
+    handler: async (c) => {
+      const authed = requireAuth(c);
+      if (authed) return authed;
+      const db = getDb();
+      const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10), 500);
+      const result = await db.execute({
+        sql: `SELECT i.id, i.contact_id, i.amount_idr, i.description, i.due_at, i.paid_at, i.created_at,
+                     c.name as contact_name
+              FROM invoices i
+              LEFT JOIN contacts c ON i.contact_id = c.id
+              WHERE i.tenant_id = ?
+              ORDER BY i.created_at DESC LIMIT ?`,
+        args: [tenantId, limit],
+      });
+      return c.json({
+        invoices: result.rows.map((r) => ({
+          id: Number(r.id),
+          contactId: r.contact_id ? Number(r.contact_id) : null,
+          contactName: r.contact_name ? String(r.contact_name) : null,
+          amountIdr: Number(r.amount_idr),
+          description: r.description ? String(r.description) : null,
+          dueAt: r.due_at ? Number(r.due_at) : null,
+          paidAt: r.paid_at ? Number(r.paid_at) : null,
+          isPaid: r.paid_at !== null,
+          isOverdue: r.due_at && !r.paid_at && Number(r.due_at) < Date.now(),
+          createdAt: Number(r.created_at),
+        })),
+      });
+    },
+  }),
   registerApiRoute('/custom/dashboard/stats', {
     method: 'GET',
     openapi: {
