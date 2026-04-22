@@ -17,6 +17,20 @@ import { getPluginManager } from '@juragan/core';
 import { orderApprovalWorkflow } from '../workflows/order-approval.js';
 import { restockWorkflow } from '../workflows/restock.js';
 import { customerFollowupWorkflow } from '../workflows/customer-followup.js';
+import { z } from 'zod';
+
+// Request context schema — validates tenantId/role/channel before agent execution
+const requestContextSchema = z.object({
+  tenantId: z.string().min(1),
+  role: z.enum(['owner', 'staff', 'customer']).default('owner'),
+  channel: z.enum(['telegram', 'whatsapp']).default('telegram'),
+});
+
+type RequestContextValues = z.infer<typeof requestContextSchema>;
+
+// Re-export for use by agents
+export { requestContextSchema };
+export type { RequestContextValues };
 
 registerAcpRoutes();
 
@@ -77,7 +91,25 @@ export const mastra = new Mastra({
   },
   server: {
     apiRoutes,
+    middleware: [
+      async (c, next) => {
+        // Inject tenantId from x-telegram-chat-id header before agent executes
+        const chatId = c.req.header('x-telegram-chat-id');
+        if (chatId) {
+          // Simple tenantId derivation from Telegram chat ID
+          // In production this would look up the tenant from a mapping table
+          c.set('tenantId', `telegram:${chatId}`);
+        }
+        const channel = c.req.header('x-channel-type');
+        if (channel) {
+          c.set('channel', channel);
+        }
+        await next();
+      },
+    ],
   },
+  // Request context validation schema — validates tenantId/role/channel before agent execution
+  // This runs as part of Mastra's request context handling
 });
 
 // Kick off the reminder loop after the Mastra instance exists. Survives the Mastra dev

@@ -1,0 +1,12 @@
+{
+  "id": "telegram-channel",
+  "name": "Telegram Channel",
+  "version": "1.0.0",
+  "description": "Telegram bot messaging via @chat-adapter/telegram — polling mode with webhook support",
+  "channels": [
+    {
+      "id": "telegram",
+      "type": "telegram"
+    }
+  ]
+}
