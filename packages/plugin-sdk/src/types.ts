@@ -29,6 +29,11 @@ export const PluginManifestSchema = z.object({
     .default([]),
   skills: z.array(z.string()).optional().default([]),
   tools: z.array(z.string()).optional().default([]),
+  capabilities: z
+    .array(z.enum(['read', 'write', 'action', 'admin']))
+    .optional()
+    .default([])
+    .describe('Tool categories this plugin provides (for capability introspection)'),
   settingsFiles: z.array(z.string()).optional().default([]),
 });
 
