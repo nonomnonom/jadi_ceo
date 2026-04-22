@@ -1,4 +1,5 @@
 import type { Db } from '../db/client.js';
+import { getConfirmationRegistry } from '@juragan/core';
 
 export type DueReminder = {
   id: number;
@@ -149,6 +150,13 @@ export function startReminderExecutor(db: Db, tenantId: string): () => void {
         `[reminder-tick] checked=${result.checked} dispatched=${result.dispatched} skipped=${result.skipped.length}`,
         result.skipped,
       );
+    }
+
+    // Auto-reject any timed-out pending approvals
+    const registry = getConfirmationRegistry();
+    const timedOut = registry.runCleanup();
+    if (timedOut.length > 0) {
+      console.info(`[confirmation-registry] auto-rejected ${timedOut.length} timed-out approvals`);
     }
   };
 

@@ -227,5 +227,190 @@ export function createOrderCommandTools({ db, tenantId }: OrderCommandDeps) {
     },
   });
 
-  return { listOrders, approveOrder, rejectOrder };
+  const batchApproveOrders = createTool({
+    id: 'batch-approve-orders',
+    description:
+      'Setuju/batch approve beberapa pesanan customer sekaligus. Kirim notifikasi WhatsApp ke masing-masing customer. Gunakan saat owner minta "/order approve-all" atau ingin approve beberapa order sekaligus.',
+    inputSchema: z.object({
+      orderIds: z.array(z.number().int().positive()).min(1).max(50),
+    }),
+    outputSchema: z.object({
+      results: z.array(
+        z.object({
+          orderId: z.number().int(),
+          success: z.boolean(),
+          message: z.string(),
+          customerNotified: z.boolean(),
+        }),
+      ),
+      totalSuccess: z.number().int(),
+      totalFailed: z.number().int(),
+    }),
+    execute: async ({ orderIds }) => {
+      const results: Array<{
+        orderId: number;
+        success: boolean;
+        message: string;
+        customerNotified: boolean;
+      }> = [];
+      let totalSuccess = 0;
+      let totalFailed = 0;
+
+      for (const orderId of orderIds) {
+        const orderResult = await db.execute({
+          sql: `SELECT o.id, o.customer_phone, o.total_idr, o.status, p.name as product_name
+                FROM orders o
+                JOIN products p ON o.product_id = p.id
+                WHERE o.id = ? AND o.tenant_id = ?`,
+          args: [orderId, tenantId],
+        });
+
+        if (orderResult.rows.length === 0) {
+          results.push({ orderId, success: false, message: 'Order tidak ditemukan', customerNotified: false });
+          totalFailed++;
+          continue;
+        }
+
+        const order = orderResult.rows[0];
+        if (!order) {
+          results.push({ orderId, success: false, message: 'Order tidak ditemukan', customerNotified: false });
+          totalFailed++;
+          continue;
+        }
+
+        if (String(order.status) !== 'pending') {
+          results.push({ orderId, success: false, message: `Order sudah berstatus "${order.status}"`, customerNotified: false });
+          totalFailed++;
+          continue;
+        }
+
+        const now = Date.now();
+        await db.execute({
+          sql: "UPDATE orders SET status = 'approved', updated_at = ? WHERE id = ?",
+          args: [now, orderId],
+        });
+
+        await db.execute({
+          sql: `INSERT INTO order_status_history (tenant_id, order_id, old_status, new_status, changed_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+          args: [tenantId, orderId, 'pending', 'approved', 'owner', now],
+        });
+
+        let customerNotified = false;
+        const channel = getPluginManager().getChannelById('whatsapp-channel');
+        const customerPhone = String(order.customer_phone);
+
+        if (channel && (await channel.adapters.status?.getStatus()) === 'connected') {
+          try {
+            const jid = phoneToJid(customerPhone);
+            const totalFormatted = `Rp ${Number(order.total_idr).toLocaleString('id-ID')}`;
+            await channel.adapters.outbound?.sendMessage(jid, `✅ Pesanan kamu sudah DIKONFIRMASI!\n\nOrder ID: #${orderId}\nProduk: ${order.product_name}\nTotal: ${totalFormatted}\n\nPesanan akan segera diproses. Terima kasih!`);
+            customerNotified = true;
+          } catch (err) {
+            console.error('Failed to notify customer:', err);
+          }
+        }
+
+        results.push({ orderId, success: true, message: `Order #${orderId} di-approve`, customerNotified });
+        totalSuccess++;
+      }
+
+      return { results, totalSuccess, totalFailed };
+    },
+  });
+
+  const batchRejectOrders = createTool({
+    id: 'batch-reject-orders',
+    description:
+      'Tolak/batch reject beberapa pesanan customer sekaligus. Kirim notifikasi WhatsApp ke masing-masing customer. Gunakan saat owner ingin reject beberapa order sekaligus.',
+    inputSchema: z.object({
+      orderIds: z.array(z.number().int().positive()).min(1).max(50),
+      reason: z.string().max(200).optional(),
+    }),
+    outputSchema: z.object({
+      results: z.array(
+        z.object({
+          orderId: z.number().int(),
+          success: z.boolean(),
+          message: z.string(),
+          customerNotified: z.boolean(),
+        }),
+      ),
+      totalSuccess: z.number().int(),
+      totalFailed: z.number().int(),
+    }),
+    execute: async ({ orderIds, reason }) => {
+      const results: Array<{
+        orderId: number;
+        success: boolean;
+        message: string;
+        customerNotified: boolean;
+      }> = [];
+      let totalSuccess = 0;
+      let totalFailed = 0;
+
+      for (const orderId of orderIds) {
+        const orderResult = await db.execute({
+          sql: `SELECT o.id, o.customer_phone, o.status, p.name as product_name
+                FROM orders o
+                JOIN products p ON o.product_id = p.id
+                WHERE o.id = ? AND o.tenant_id = ?`,
+          args: [orderId, tenantId],
+        });
+
+        if (orderResult.rows.length === 0) {
+          results.push({ orderId, success: false, message: 'Order tidak ditemukan', customerNotified: false });
+          totalFailed++;
+          continue;
+        }
+
+        const order = orderResult.rows[0];
+        if (!order) {
+          results.push({ orderId, success: false, message: 'Order tidak ditemukan', customerNotified: false });
+          totalFailed++;
+          continue;
+        }
+
+        if (String(order.status) !== 'pending') {
+          results.push({ orderId, success: false, message: `Order sudah berstatus "${order.status}"`, customerNotified: false });
+          totalFailed++;
+          continue;
+        }
+
+        const now = Date.now();
+        await db.execute({
+          sql: "UPDATE orders SET status = 'rejected', updated_at = ? WHERE id = ?",
+          args: [now, orderId],
+        });
+
+        await db.execute({
+          sql: `INSERT INTO order_status_history (tenant_id, order_id, old_status, new_status, changed_by, note, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          args: [tenantId, orderId, 'pending', 'rejected', 'owner', reason ?? null, now],
+        });
+
+        let customerNotified = false;
+        const channel = getPluginManager().getChannelById('whatsapp-channel');
+        const customerPhone = String(order.customer_phone);
+
+        if (channel && (await channel.adapters.status?.getStatus()) === 'connected') {
+          try {
+            const jid = phoneToJid(customerPhone);
+            const reasonText = reason ? `\nAlasan: ${reason}` : '';
+            await channel.adapters.outbound?.sendMessage(jid, `❌ Pesanan kamu DITOLAK.\n\nOrder ID: #${orderId}\nProduk: ${order.product_name}${reasonText}\n\nMohon maaf atas ketidaknyamanannya.`);
+            customerNotified = true;
+          } catch (err) {
+            console.error('Failed to notify customer:', err);
+          }
+        }
+
+        results.push({ orderId, success: true, message: `Order #${orderId} di-reject`, customerNotified });
+        totalSuccess++;
+      }
+
+      return { results, totalSuccess, totalFailed };
+    },
+  });
+
+  return { listOrders, approveOrder, rejectOrder, batchApproveOrders, batchRejectOrders };
 }

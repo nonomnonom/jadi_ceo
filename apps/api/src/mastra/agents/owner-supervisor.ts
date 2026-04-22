@@ -47,7 +47,8 @@ const { addContact, listContacts } = createContactTools({ db, tenantId });
 const { createInvoice, listInvoices, markInvoicePaid } = createInvoiceTools({ db, tenantId });
 
 // Owner command tools
-const { listOrders, approveOrder, rejectOrder } = createOrderCommandTools({ db, tenantId });
+const { listOrders, approveOrder, rejectOrder, batchApproveOrders, batchRejectOrders } =
+  createOrderCommandTools({ db, tenantId });
 const {
   listCustomerOrders,
   viewCustomerConversation,
@@ -225,6 +226,8 @@ export const ownerSupervisor = new Agent({
     listOrders,
     approveOrder,
     rejectOrder,
+    batchApproveOrders,
+    batchRejectOrders,
     // Customer commands
     listCustomerOrders,
     viewCustomerConversation,

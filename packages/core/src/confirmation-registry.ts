@@ -77,6 +77,12 @@ export interface ConfirmationRegistry {
    * Register a callback for approval state changes.
    */
   onApprovalChange(handler: ApprovalHandler): void;
+
+  /**
+   * Run cleanup — auto-reject all timed-out pending approvals.
+   * Returns the IDs of approvals that were auto-rejected.
+   */
+  runCleanup(): string[];
 }
 
 const DEFAULT_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
@@ -176,5 +182,20 @@ class ConfirmationRegistryImpl implements ConfirmationRegistry {
 
   onApprovalChange(handler: ApprovalHandler): void {
     this.handlers.push(handler);
+  }
+
+  runCleanup(): string[] {
+    const now = Date.now();
+    const rejected: string[] = [];
+    for (const [id, p] of this.pending) {
+      if (p.timeoutAt < now) {
+        this.pending.delete(id);
+        rejected.push(id);
+        for (const h of this.handlers) {
+          h(id, false, 'system').catch(() => {});
+        }
+      }
+    }
+    return rejected;
   }
 }

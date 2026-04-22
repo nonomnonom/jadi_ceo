@@ -54,15 +54,16 @@ export interface AuditLogResult {
 }
 
 export function createAuditLogger(
-  db: { execute: (op: { sql: string; args?: unknown[] }) => Promise<unknown> },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
   tenantId: string,
 ): AuditLogger {
   async function log(entry: AuditLogEntry): Promise<void> {
     const now = Date.now();
-    await db.execute({
-      sql: `INSERT INTO audit_logs (tenant_id, tool_id, tool_name, action, actor, input_json, result_json, status, channel, conversation_id, created_at)
+    await db.execute(
+      `INSERT INTO audit_logs (tenant_id, tool_id, tool_name, action, actor, input_json, result_json, status, channel, conversation_id, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
+      [
         tenantId,
         entry.toolId,
         entry.toolName,
@@ -75,7 +76,7 @@ export function createAuditLogger(
         entry.conversationId ?? null,
         now,
       ],
-    });
+    );
   }
 
   async function query(params: {
@@ -110,20 +111,19 @@ export function createAuditLogger(
     }
 
     const where = clauses.join(' AND ');
-
-    const countResult = await db.execute({
-      sql: `SELECT COUNT(*) as cnt FROM audit_logs WHERE ${where}`,
+    const countResult = await db.execute(
+      `SELECT COUNT(*) as cnt FROM audit_logs WHERE ${where}`,
       args,
-    });
+    );
     const total = Number((countResult as unknown as { rows: { cnt: number }[] }).rows[0]?.cnt ?? 0);
 
-    const rowsResult = await db.execute({
-      sql: `SELECT id, tool_id, tool_name, action, actor, input_json, result_json, status, channel, conversation_id, created_at
+    const rowsResult = await db.execute(
+      `SELECT id, tool_id, tool_name, action, actor, input_json, result_json, status, channel, conversation_id, created_at
             FROM audit_logs WHERE ${where}
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?`,
-      args: [...args, limit, offset],
-    });
+      [...args, limit, offset],
+    );
     type Row = [number, string, string, string, string, string | null, string | null, string, string, string | null, number];
     const rows = (rowsResult as unknown as Row[][])[0] ?? [];
 
