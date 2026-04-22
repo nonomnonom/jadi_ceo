@@ -42,7 +42,18 @@ export function DashboardLayout() {
     <div className="min-h-screen bg-stone-50">
       {/* Mobile header */}
       <header className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-3 lg:hidden">
-        <h1 className="text-lg font-semibold text-stone-900">Juragan</h1>
+        <div className="flex items-center gap-2">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              waConnected === null
+                ? 'bg-stone-400 animate-pulse'
+                : waConnected
+                ? 'bg-emerald-500'
+                : 'bg-rose-500'
+            }`}
+          />
+          <h1 className="text-lg font-semibold text-stone-900">Juragan</h1>
+        </div>
         <button
           type="button"
           onClick={() => setSidebarOpen(!sidebarOpen)}
