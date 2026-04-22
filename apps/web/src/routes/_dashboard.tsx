@@ -1,9 +1,10 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { authHeaders } from '../lib/api.ts';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Overview', icon: '📊' },
-  { to: '/orders', label: 'Orders', icon: '📦' },
+  { to: '/orders', label: 'Orders', icon: '📦', badge: null as number | null },
   { to: '/products', label: 'Products', icon: '📦' },
   { to: '/customers', label: 'Customers', icon: '👥' },
   { to: '/invoices', label: 'Invoices', icon: '📄' },
@@ -18,6 +19,20 @@ const NAV_ITEMS = [
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/custom/dashboard/stats', { headers: authHeaders() })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { pendingApprovals: number } | null) => {
+        if (d) setPendingApprovals(d.pendingApprovals);
+      })
+      .catch(() => {});
+  }, []);
+
+  const navItems = NAV_ITEMS.map((item) =>
+    item.to === '/orders' ? { ...item, badge: pendingApprovals } : item
+  );
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -52,7 +67,7 @@ export function DashboardLayout() {
         <div className="p-4">
           <h2 className="mb-6 text-xl font-semibold text-white">Juragan</h2>
           <nav className="space-y-1">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -67,6 +82,11 @@ export function DashboardLayout() {
               >
                 <span>{item.icon}</span>
                 <span>{item.label}</span>
+                {item.badge != null && item.badge > 0 && (
+                  <span className="ml-auto rounded-full bg-amber-500 px-1.5 py-0.5 text-xs font-bold text-white">
+                    {item.badge}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>

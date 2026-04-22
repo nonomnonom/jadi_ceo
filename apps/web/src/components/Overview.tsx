@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   type AgentInfo,
   type DailySummary,
@@ -12,6 +12,7 @@ import {
   getOverdueInvoices,
 } from '../lib/api.ts';
 import { RevenueChart } from './RevenueChart.tsx';
+import { useAutoRefresh } from '../lib/useAutoRefresh.ts';
 
 type State = {
   summary: DailySummary | null;
@@ -34,8 +35,8 @@ export function Overview() {
     loading: true,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchData = useCallback(() => {
+    setS((prev) => ({ ...prev, loading: true, error: null }));
     Promise.all([
       getDailySummary(),
       getDashboardStats(),
@@ -44,18 +45,19 @@ export function Overview() {
       getAgent(),
     ])
       .then(([summary, dashboard, overdue, lowStock, agent]) => {
-        if (cancelled) return;
         setS({ summary, dashboard, overdue, lowStock, agent, error: null, loading: false });
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
         const message = err instanceof Error ? err.message : 'Gagal memuat data';
         setS((prev) => ({ ...prev, error: message, loading: false }));
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useAutoRefresh(fetchData, true, 5000);
 
   if (s.loading) return <Skeleton />;
   if (s.error) return <ErrorBanner message={s.error} />;

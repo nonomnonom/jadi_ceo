@@ -7,6 +7,8 @@ function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${SECRET}` };
 }
 
+export { authHeaders };
+
 async function executeTool<Out>(toolId: string, input: unknown): Promise<Out> {
   const res = await fetch(`/api/agents/${AGENT_ID}/tools/${toolId}/execute`, {
     method: 'POST',
@@ -176,6 +178,7 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
 export type DashboardStats = {
   totalOrders: number;
   ordersByStatus: Record<string, number>;
+  pendingApprovals: number;
   totalRevenueIdr: number;
   totalConversations: number;
   recentOrders: Array<{

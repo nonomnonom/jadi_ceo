@@ -864,6 +864,7 @@ export const apiRoutes = [
         ordersByStatus[String(row.status)] = cnt;
         totalOrders += cnt;
       }
+      const pendingApprovals = ordersByStatus['pending'] ?? 0;
 
       const recentOrdersRow = await db.execute({
         sql: `SELECT id, customer_phone, total_idr, status, payment_status, created_at
@@ -874,6 +875,7 @@ export const apiRoutes = [
       return c.json({
         totalOrders,
         ordersByStatus,
+        pendingApprovals,
         totalRevenueIdr: Number(revenueRow.rows[0]?.total ?? 0),
         totalConversations: Number(conversationsRow.rows[0]?.cnt ?? 0),
         recentOrders: recentOrdersRow.rows.map((r) => ({
