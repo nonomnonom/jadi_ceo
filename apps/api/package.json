@@ -23,7 +23,7 @@
     "@mastra/memory": "^1.15.1",
     "baileys": "7.0.0-rc.9",
     "qrcode": "^1.5.4",
-    "zod": "^3.25.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
