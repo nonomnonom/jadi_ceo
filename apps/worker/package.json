@@ -18,7 +18,7 @@
     "ioredis": "^5.10.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.4.13",
     "@types/node": "^20.0.0",
     "bun": "^1.0.0",
     "typescript": "5.9.2",
